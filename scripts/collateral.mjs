@@ -102,7 +102,7 @@ for (const entry of keys) {
       abi: spotAbi,
       functionName: "placeOrder",
       args: [false, 0n, price, quantity, 0n, 2, 0, "0x0000000000000000000000000000000000000000", 0n],
-      value: quantity * price,
+      value: quantity,
       gas: 5_000_000n,
     });
     const receipt = await client.waitForTransactionReceipt({ hash });
@@ -167,5 +167,6 @@ writeFileSync(
   `${JSON.stringify({ usdso: total.toString(), equity: equity.toString() }, null, 2)}\n`,
   "utf8",
 );
+
 
 

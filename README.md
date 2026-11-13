@@ -1,4 +1,4 @@
-# Mandate
+﻿# Mandate
 
 Mandate turns the rules you would say out loud into a contract that checks every perps order before
 it reaches the venue. You write "never risk more than 200 USDso on one market", one model call turns
@@ -69,7 +69,10 @@ The app reads the chain at request time. There is no cache that can disagree wit
 | `node scripts/list-markets.mjs` | Lists every perp pool on 50383 with its grid and its mark price |
 | `node scripts/deploy.mjs` | Builds the contract, deploys it, grants the operator rights, registers a mandate and produces the refusal |
 | `node scripts/measure.mjs` | Measures the refusal and the venue's own rejection, and writes `metrics.json` |
-| `node scripts/refuse.mjs` | Sends one refused order and records it |
+| 
+ode scripts/refuse.mjs | Sends one refused order and records it |
+| 
+ode scripts/collateral.mjs | Swaps the fauceted STT for USDso and deposits it as perps margin |
 | `node scripts/faucet.mjs 0x...` | Requests test STT for an address |
 
 ---
@@ -201,7 +204,9 @@ seventeen each have their own error, and `contracts/test/Codes.t.sol` asserts ev
 7. **No order was filled.** The paper credit on this venue was unavailable while the build ran, so
    the account had no collateral to place an order with. The refusal does not need collateral, which
    is why the evidence is a refusal and not a fill. The venue's own rejection of the same order is
-   in the table above, and that one needed collateral too.
+   in the table above, and that one needed collateral too. The STT the faucet did hand out could
+   not be turned into USDso either: the STT/USDso spot market had no bid while the build ran, so
+   every sell either filled nothing or was rejected outside the price band.
 
 ---
 
@@ -255,3 +260,4 @@ The drafts for both are in `docs/posts.md`, and they are not published yet.
   chain.
 - The venue's paper credit claim reverts for every address with an undocumented selector. That is
   written up in `feedback/001-perps-paper-credit-claim-reverts.md`.
+
