@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Deploy the policy contract, register a mandate, and produce the two
  * transactions the README quotes: one order the mandate allows and one it
  * refuses.
@@ -500,6 +500,7 @@ const output = {
 
 writeFileSync(join(root, "deployment.json"), `${JSON.stringify(output, null, 2)}\n`, "utf8");
 log(`wrote ${join(root, "deployment.json")}`);
+
 
 
 

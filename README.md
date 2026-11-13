@@ -82,7 +82,7 @@ The mandate is registered on chain and one order was refused by it.
 |---|---|
 | The Mandate contract | `0x026cd82eeace8da496e541005bad67197a57349e` |
 | The registration | `0x291ecb844a766d5ccc101471fb2e8e3db76f78dc944d4bd63d60f734a750570e` |
-| The policy hash | `0x3f0d63a3d3f1a1b4a1cf1c5e1f6b8c5e4d3c2b1a09f8e7d6c5b4a39281706f` |
+| The policy hash | `0xa2e9724296625837f0001c5ff180f6c17d18b35c81977d8b1e39b9036ce102e1` |
 | The refusal, written on chain | `0x9b8541a583a89b3fa50518386d422e07bac8df36df08fd54b255446669649edf` |
 | The same order sent straight to the pool | `0x583f241a09af6a466af47fde679884779dfb1065c72199dc28b68350953a149a` |
 
