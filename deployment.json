@@ -1,0 +1,28 @@
+{
+  "chainId": 50383,
+  "rpc": "https://api.hideki2.infra.testnet.somnia.network",
+  "mandate": "0x026cd82eeace8da496e541005bad67197a57349e",
+  "executor": "0xa9526B5B70946AdA0a97781008524Cb1F9E11f3D",
+  "owner": "0x0B55a453B3F95a43E0327439E8932ae82Bc7aF0e",
+  "registration": "0x291ecb844a766d5ccc101471fb2e8e3db76f78dc944d4bd63d60f734a750570e",
+  "allowedOrder": null,
+  "refusedOrder": {
+    "tx": "0x37a2b40c41873608ee8777aa07888c17a08c17515e3217379a5784f86925ea47",
+    "selector": null,
+    "code": null,
+    "price": "71674600000000000000000",
+    "quantity": "2791000",
+    "baseDecimals": 8,
+    "recorded": "0x9b8541a583a89b3fa50518386d422e07bac8df36df08fd54b255446669649edf"
+  },
+  "market": {
+    "pool": "0x4181dd08E73BbCdd1Ba3E615A18f6abD941b94C0",
+    "symbol": "BTC-PERP",
+    "tickSize": "100000000000000000",
+    "minQuantity": "13000",
+    "lotSize": "1000",
+    "mark": "71674619753829253000000"
+  },
+  "equity": "0",
+  "runAt": "2026-11-12T18:58:19.111Z"
+}

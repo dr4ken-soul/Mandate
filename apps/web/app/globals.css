@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+  /* surfaces: cool paper, never cream, never #ffffff */
+  --color-paper: oklch(0.968 0.004 240);
+  --color-paper-band: oklch(0.944 0.005 240);
+  --color-plate: oklch(0.192 0.012 250);
+  --color-plate-raised: oklch(0.245 0.012 250);
+
+  /* ink, never #000000 */
+  --color-ink: oklch(0.192 0.012 250);
+  --color-ink-secondary: oklch(0.470 0.011 250);
+  --color-ink-tertiary: oklch(0.540 0.010 250);
+  --color-plate-ink: oklch(0.960 0.004 240);
+  --color-plate-ink-muted: oklch(0.760 0.008 250);
+
+  /* rules: structure, not decoration */
+  --color-rule-hair: oklch(0.888 0.005 250);
+  --color-rule-strong: oklch(0.620 0.010 250);
+  --color-rule-plate: oklch(0.320 0.012 250);
+
+  /* the single signal. refusal only. */
+  --color-signal: oklch(0.525 0.190 30);
+  --color-signal-text: oklch(0.420 0.150 30);
+  --color-signal-on-plate: oklch(0.660 0.160 32);
+  --color-signal-wash: oklch(0.525 0.190 30 / 0.08);
+
+  /* type */
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-sans: "Archivo", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* geometry: nothing rounds */
+  --radius-panel: 0px;
+  --radius-tag: 2px;
+  --shadow-plate: 0 2px 0 0 var(--color-rule-strong);
+
+  /* motion */
+  --ease-quint: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-normal: 220ms;
+  --dur-slow: 420ms;
+}
+
+:root {
+  /* z-index scale, named and closed. nothing above 600. */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-plate: 20;
+  --z-nav: 200;
+  --z-overlay: 300;
+  --z-drawer: 310;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "@mandate/web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mandate web app: public landing page, wallet-gated console, decision ledger and public receipts.",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mandate/policy": "*",
+    "@somnia-chain/markets-sdk": "0.32.1",
+    "@somnia-chain/reactivity-contracts": "^0.2.1",
+    "@tanstack/react-query": "^5.107.1",
+    "@x402/evm": "^2.31.0",
+    "@x402/svm": "^2.31.0",
+    "lucide-react": "^0.469.0",
+    "motion": "^12.43.0",
+    "next": "14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "viem": "^2.57.18",
+    "wagmi": "^2.19.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "eslint": "8.57.1",
+    "eslint-config-next": "14.2.35",
+    "tailwindcss": "^4.3.5",
+    "typescript": "5.9.3"
+  }
+}

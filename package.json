@@ -1,0 +1,30 @@
+{
+  "name": "mandate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mandate compiles plain-English trading rules into a deterministic on-chain policy for Somnia perps.",
+  "workspaces": [
+    "apps/web",
+    "packages/policy"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/web",
+    "start": "npm run start --workspace apps/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "forge:build": "cd contracts && forge build",
+    "forge:test": "cd contracts && forge test",
+    "measure": "node --experimental-strip-types scripts/measure.ts",
+    "demo": "node --experimental-strip-types scripts/demo-executor.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "8.57.1",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

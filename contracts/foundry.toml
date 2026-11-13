@@ -1,0 +1,29 @@
+[profile.default]
+src = "src"
+out = "out"
+test = "test"
+libs = ["lib"]
+remappings = [
+  "forge-std/=lib/forge-std/src/",
+  "@somnia-chain/reactivity-contracts/=lib/reactivity-contracts/",
+]
+solc_version = "0.8.30"
+evm_version = "paris"
+optimizer = true
+optimizer_runs = 200
+bytecode_hash = "none"
+fs_permissions = [{ access = "read", path = "./test/fixtures" }]
+gas_reports = ["Mandate", "MandateWatch"]
+
+[profile.default.fuzz]
+runs = 256
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+
+[etherscan]
+hideckitestnet = { key = "${HIDEKI_ETHERSCAN_KEY}", url = "https://api.hideki.infra.testnet.somnia.network" }
+

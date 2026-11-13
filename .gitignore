@@ -1,0 +1,32 @@
+﻿# dependencies
+node_modules/
+
+# next.js
+apps/web/.next/
+apps/web/out/
+apps/web/.vercel/
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# environment
+.env
+.env.local
+.env.*.local
+
+# local keys from the faucet runs
+faucet-keys.json
+
+# logs and editor noise
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,18 @@
+{
+  "allowedMarkets": [
+    "0x4181dd08E73BbCdd1Ba3E615A18f6abD941b94C0"
+  ],
+  "maxLeverageBps": 500,
+  "maxNotionalPerMarket": "50000000000000000000",
+  "maxNotionalTotal": "100000000000000000000",
+  "maxLossPerWindow": "20000000000000000000",
+  "expiresAt": 1765152000,
+  "clauseTexts": [
+    "Only trade BTC-PERP.",
+    "Never above 5x.",
+    "Never risk more than 50 USDso on one market.",
+    "Never above 100 USDso in total.",
+    "Stop at a loss of 20 USDso.",
+    "Be flat in seven days."
+  ]
+}
