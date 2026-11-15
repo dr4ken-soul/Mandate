@@ -4,7 +4,7 @@ Sequenced build plan for Mandate. The dates below are the original plan; the aud
 
 ## Final audit: 15 November 2026
 
-The current Hideki deployment, admitted BTC-PERP fill, refusal and refusal record, bridged collateral, spot fill, and full position reduction were rechecked against chain receipts. GitHub currently contains the earlier pushed baseline; the local completion changes still need a final commit and push. The Vercel project and production deployment are also still pending at this audit point.
+The current Hideki deployment, admitted BTC-PERP fill, refusal and refusal record, bridged collateral, spot fill, and full position reduction were rechecked against chain receipts. The completion changes are pushed to GitHub in commit `a7f54ca`. A new public Vercel project is configured; its production build and receipt-route check are pending.
 
 ---
 
@@ -108,7 +108,7 @@ The plate has three states and only three. `DECISION` is a recorded event with a
 - [x] .env.example has public testnet configuration and blank secret fields. The real .env is ignored and local only.
 - [x] Limits are stated, including the undeployed reactive handler and testnet-only funding.
 - [x] The paper-credit report documents a reproducible claim failure and no longer calls the failed claim the only collateral path.
-- [ ] The current completion commit still needs to be pushed to GitHub.
+- [x] The current completion commit was pushed to GitHub (`a7f54ca`).
 - [ ] A new Vercel project and production deployment still need verification.
 
 **Interface**
