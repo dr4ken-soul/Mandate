@@ -209,7 +209,7 @@ Two rules govern the whole flow.
 
 **Fail closed.** Every unknown is a refusal. If a read fails, if equity cannot be derived, if the pool returns an unexpected reason, the order does not proceed. Admitted is the only state that requires positive evidence.
 
-**Refuse without spending.** A refusal reverts with the custom error and emits the event in the same call, so the transaction costs only the gas of the check, and the UI can decode the code without a separate read. The comparison is deliberate in the demo: the same order sent straight to the venue is mined and reverts from the pool, which costs materially more and returns a hex selector with no explanation.
+**Refuse before placing.** A policy refusal reverts with the custom error, so the venue never receives the order. EVM reversion also discards logs from that transaction, and the failed call still pays its own gas. To preserve a public decision, the authorized executor makes a second `recordRefusal` call with the refused request, code, and reverted transaction hash. The contract reruns the policy checks and emits `Decision` only if the request still refuses. The public receipt links both transactions and explains the code.
 
 ---
 
