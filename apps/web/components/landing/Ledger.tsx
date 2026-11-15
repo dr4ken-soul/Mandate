@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { copyFor, formatQuote, reasonCode } from "@mandate/policy";
-import { listDecisions, type DecisionRow } from "@/lib/chain/reads";
+import { decisionTargetHash, listDecisions, type DecisionRow } from "@/lib/chain/reads";
 
 /**
  * The decision ledger.
@@ -80,7 +80,7 @@ export async function Ledger() {
               return (
                 <Link
                   key={`${row.txHash}-${row.blockNumber}`}
-                  href={`/console/decisions/${row.txHash}`}
+                  href={`/console/decisions/${decisionTargetHash(row)}`}
                   className="group grid grid-cols-1 gap-x-4 gap-y-1 border-b border-rule-hair py-4 transition-colors duration-[120ms] hover:bg-paper md:grid-cols-[6.5rem_7rem_1fr_7.5rem_5rem_8rem]"
                 >
                   <span className="font-mono text-[0.75rem] tabular-nums text-ink-tertiary">
@@ -103,7 +103,7 @@ export async function Ledger() {
                     0x{row.code.toString(16).toUpperCase().padStart(2, "0")}
                   </span>
                   <span className="font-mono text-[0.75rem] tabular-nums text-ink-secondary group-hover:text-ink md:justify-self-end">
-                    {row.txHash.slice(0, 10)}…{row.txHash.slice(-4)}
+                    {decisionTargetHash(row).slice(0, 10)}…{decisionTargetHash(row).slice(-4)}
                   </span>
                 </Link>
               );

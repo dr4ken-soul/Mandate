@@ -1,4 +1,4 @@
-﻿# Mandate
+# Mandate
 
 Mandate turns the rules you would say out loud into a contract that checks every perps order before
 it reaches the venue. You write "never risk more than 200 USDso on one market", one model call turns
@@ -38,7 +38,13 @@ cp .env.example .env
 #    Fill in DEPLOYER_PRIVATE_KEY and EXECUTOR_PRIVATE_KEY, and COMPILER_API_KEY if the
 #    compiler is wanted. The presets compile without a model call.
 
-# 3. Run the contract tests. No fork, no network, 45 tests.
+`node scripts/setup-env.mjs` generates the two testnet keys locally and keeps them in the ignored
+`.env`; they were not obtained from a venue or another person. `COMPILER_API_KEY` is blank in this
+checkout, so free-text compilation needs an OpenAI API key from
+<https://platform.openai.com/api-keys>. Presets do not need it. The app currently uses an injected
+wallet connector, so `WALLETCONNECT_PROJECT_ID` is optional and unused.
+
+# 3. Run the contract tests. No fork, no network; the current Foundry suite has 68 tests.
 npm run forge:test
 
 # 4. Run the policy package tests.
@@ -65,82 +71,48 @@ The app reads the chain at request time. There is no cache that can disagree wit
 
 | Script | What it does |
 |---|---|
-| `node scripts/setup-env.mjs` | Writes `.env` and `.env.example` with the chain values and two fresh test keys |
+| `node scripts/setup-env.mjs` | Writes `.env` and `.env.example` with chain values and locally generated test keys |
 | `node scripts/list-markets.mjs` | Lists every perp pool on 50383 with its grid and its mark price |
 | `node scripts/deploy.mjs` | Builds the contract, deploys it, grants the operator rights, registers a mandate and produces the refusal |
 | `node scripts/measure.mjs` | Measures the refusal and the venue's own rejection, and writes `metrics.json` |
-| 
-ode scripts/refuse.mjs | Sends one refused order and records it |
-| 
-ode scripts/collateral.mjs | Swaps the fauceted STT for USDso and deposits it as perps margin |
+| `node scripts/refuse.mjs` | Sends one refused order and records its verified reason code |
+| `node scripts/funding-status.mjs` | Reads testnet balances and published voucher eligibility without printing keys |
+| `node scripts/claim-voucher.mjs` | Simulates a test credit claim before broadcast; currently captures the venue's unknown revert |
+| `node scripts/spot-pool.mjs 0xPool` | Reads the spot grid, mark and live bid/ask levels |
+| `node scripts/sell-spot-testnet-stt.mjs` | Fill-or-kill sells one minimum STT unit after a successful live simulation |
 | `node scripts/faucet.mjs 0x...` | Requests test STT for an address |
+| `node scripts/verify-live-evidence.mjs` | Rechecks the deployment, order, refusal, bridge, deposit and spot receipts |
+| `node scripts/verify-position-reduction.mjs` | Confirms the position reduction filled and the MarginBank position is zero |
+
+`.env` is present locally and ignored by Git. It contains the real testnet keys; `.env.example` has
+the public values and blank secrets.
 
 ---
 
 ## The evidence
 
-The mandate is registered on chain and one order was refused by it.
+Live testnet evidence was rechecked on 15 November 2026. The owner’s BTC-PERP position is now flat.
 
-| What | Hash |
+| Event | Transaction |
 |---|---|
-| The Mandate contract | `0x026cd82eeace8da496e541005bad67197a57349e` |
-| The registration | `0x291ecb844a766d5ccc101471fb2e8e3db76f78dc944d4bd63d60f734a750570e` |
-| The policy hash | `0xa2e9724296625837f0001c5ff180f6c17d18b35c81977d8b1e39b9036ce102e1` |
-| The refusal, written on chain | `0x9b8541a583a89b3fa50518386d422e07bac8df36df08fd54b255446669649edf` |
-| The same order sent straight to the pool | `0x583f241a09af6a466af47fde679884779dfb1065c72199dc28b68350953a149a` |
+| Mandate deployed at 0xaa1c29381a7b68b59302faecb6b3fd7b74c6ad8f | [deployment](https://explorer.testnet.somnia.network/tokyo/tx/0x0c1d237e9e52eb7b978262b1dcba331cc6d3f454d32fe1567375d17bb618c22b) |
+| Operator permission for the BTC-PERP order selector | [per-pool grant](https://explorer.testnet.somnia.network/tokyo/tx/0xfd7dc43111fb02a173483ebca1900dc3c412f3fc57aa2549e78bb1dbd263f9e8) · [global grant](https://explorer.testnet.somnia.network/tokyo/tx/0x65e804692963a1980efbfb265ec6e9120ce54517ba4a057fcddde81615b044d4) |
+| Policy registered, hash 0x3af1eb5dcbc80c5d66fcc7c9386e6593a761f6b2948b45bf2ea9ba90b503a681 | [registration](https://explorer.testnet.somnia.network/tokyo/tx/0x041845c7c08f87c5f022601289644e1e3c56ad25bec9f4c1d27ce238a76a5555) |
+| Allowed order: 0.00013 BTC, filled at 64,633.9 USDso through Mandate | [filled order](https://explorer.testnet.somnia.network/tokyo/tx/0x9a276ba37aec4a7797a886ea11964c164aadb01975cbe6c10fc403e9608382aa) |
+| Same demonstration position reduced by 0.00013 BTC and verified flat | [reduction](https://explorer.testnet.somnia.network/tokyo/tx/0x6813e346b5c98427baa0cd0846d8dd5fe0658e24fc4294f63427fb0298d9d04f) |
+| Refused 0.03095 BTC order: code 0x08, clause C3 | [reverted order](https://explorer.testnet.somnia.network/tokyo/tx/0xc959795e02d89e48885e6ec874eaa416e157dc8e8f6141da239bd6db84de0021) |
+| Refusal decision recorded in a separate transaction | [decision record](https://explorer.testnet.somnia.network/tokyo/tx/0xb69586ed6ae3f7866b220966371469de16da83fe65e31c0632d2c7655569833e) |
+| One STT sold on the STT/USDso spot market at 0.144 USDso | [spot fill](https://explorer.testnet.somnia.network/tokyo/tx/0x58cd9915b8bd5be9f8621d515cdc934957917ae150cb8335cf41f8d725e1fa91) |
 
-The refused order was 0.02804 BTC at 71,674.60 USDso, which is 2,000.04 USDso of notional, against
-a clause C3 cap of 200.00 USDso. The refusal carries code `0x08`, the clause `C3`, the value the
-order would have reached and the cap it broke.
+The refused request’s limit notional was about 2,000.04 USDso. With the existing small position, the policy compared about 2,008.44 USDso against the 200 USDso per-market cap. The reverted transaction has selector 0x47a56227. A second transaction records the decision because logs from a reverted transaction cannot persist. The public receipt route accepts the refused order hash and shows both transaction hashes.
 
-Open the refusal in a logged-out browser and the receipt renders:
+The demo account received 100 test USDso on Shannon (50312), bridged it to Hideki (50383), and deposited it into MarginBank. This is testnet funding, not mainnet collateral. The reproducible receipts are in bridge-funding.json and collateral.json.
 
-```
-https://explorer.testnet.somnia.network/tokyo/tx/0x9b8541a583a89b3fa50518386d422e07bac8df36df08fd54b255446669649edf
-```
+## Live integration and the earlier errors
 
-**The gas, measured on this deployment.** The policy refusal cost 137,248 gas. The same order sent
-straight to the pool cost 99,919 gas before the venue refused it. The policy is not cheaper here,
-and the reason is worth saying out loud: the refusal pays for the checks that decide the answer, and
-this venue refuses an unfunded order before it does the matching work. Both numbers are testnet
-figures from one deployment, not a benchmark.
+The Mandate contract is authorized by the operator registry and the pool. A permitted perp order has now gone through Mandate.admit and filled. The earlier EOperatorRevoked result came from a replay script that omitted the executor as the transaction sender. The corrected replay uses the actual sender.
 
----
-
-## The two verification results
-
-The blueprint asked two questions before any product code was written. Both are answered here, and
-neither answer is the one the plan expected.
-
-**1. Can a contract act as the operator for a wallet?**
-
-Partly, and not on the perp pools.
-
-The operator grant exists and the registry records it. `setOperatorApprovalGlobal` and
-`setOperatorApprovalForPool` both succeed, and the pool's own `isOperatorAuthorized(owner, contract,
-0x80054449)` reads true afterwards. A spot pool would accept the contract's order.
-
-A perp pool does not. The same order, sent by the policy contract to the perp pool, is refused by
-the venue with its own `EOperatorRevoked`, whose selector is `0x5e23eb82`. The grant is in place and
-the venue still refuses. The perp pool's collateral path only pulls for the owner, so a contract
-operator has no way to fund the order it places.
-
-**The fallback this build uses:** the policy contract is the gate and the owner signs the order.
-The executor calls `admit()`, the contract checks every clause and either emits the decision or
-reverts with the code, and the owner's own wallet sends the order to the venue. The executor holds no
-funds and no grant, so a policy check cannot be skipped by going around the contract. The cost is that
-the owner is the last signer, which is the thing a bot wants to avoid.
-
-**2. Is reactivity available on Hideki?**
-
-Not verified, and not claimed. The reactive handler is written and compiles
-(`contracts/src/MandateWatch.sol`, a `SomniaEventHandler` that subscribes to the venue's position
-events and reduces the position when a clause breaks), but it is not deployed: the precompile requires
-the subscription owner to hold 32 STT, and this build's wallet holds about one STT. The enforcement
-badge in the console therefore reads `NOT DEPLOYED` rather than `CHAIN`. Nothing in this repository
-labels a keeper action as a chain action.
-
----
+Two integration mismatches were fixed before the successful fill: the policy queried voucherExpiryOf on MarginBank instead of reading getCreditFloor, and it called marketExpiryNs on a live pool whose getter reverts. The forwarding path now uses explicit order expiry and the correct credit-floor read.
 
 ## The policy
 
@@ -189,26 +161,12 @@ seventeen each have their own error, and `contracts/test/Codes.t.sol` asserts ev
 
 ## What Mandate does not do
 
-1. **It cannot outrun a liquidation.** A callback is not instant and the venue does not wait for one.
-   Mandate narrows the range of outcomes. It does not remove the floor.
-2. **The compiler can misread a sentence.** That is why the compiled value appears beside your own
-   words and why the hash covers both.
-3. **An operator can be revoked.** Revoking the key stops trading immediately. The console says so
-   before you click.
-4. **Callbacks cost the owner.** A subscription is not free, and the precompile requires a balance
-   held at the vault.
-5. **Testnet only.** Paper credit, no real funds, and no mainnet perps to connect to yet.
-6. **A contract cannot place a perp order for its owner.** The venue refuses it, and this build
-   answers with the owner's signature instead. That is the verification result above, written down
-   rather than papered over.
-7. **No order was filled.** The paper credit on this venue was unavailable while the build ran, so
-   the account had no collateral to place an order with. The refusal does not need collateral, which
-   is why the evidence is a refusal and not a fill. The venue's own rejection of the same order is
-   in the table above, and that one needed collateral too. The STT the faucet did hand out could
-   not be turned into USDso either: the STT/USDso spot market had no bid while the build ran, so
-   every sell either filled nothing or was rejected outside the price band.
-
----
+1. It cannot outrun a liquidation. Callbacks are not instant and the venue does not wait.
+2. The compiler can misread a sentence. Review the compiled values before registering.
+3. The policy is enforced when orders pass through Mandate. A separate venue path can bypass it.
+4. Reactive enforcement is not deployed. The subscription needs 32 STT and the test wallet does not have that balance. The app correctly says NOT DEPLOYED; there is no keeper running.
+5. The paper-credit claim still reverts with an undocumented payload. The demo used a separate testnet USDso bridge and deposit path; the claim issue did not prevent the verified perp fill.
+6. Testnet only. No mainnet orders or real funds are involved.
 
 ## The repository
 
@@ -235,29 +193,19 @@ The contract is `contracts/src/Mandate.sol`. The shared package is `packages/pol
 | `contracts/test/Admit.t.sol` | The admission flow: what passes, what is refused, what is recorded |
 | `packages/policy/test/` | The hash, the escaping, the key order independence, the code table, the presets |
 
-`npm run forge:test` runs all of them offline. There is no fork requirement.
+``npm run forge:test` runs all of them offline. There is no fork requirement.
 
 ---
 
 ## X posts
 
-| Post | Link |
-|---|---|
-| 1, what I am building | https://x.com/dreamdex/status/1 |
-| 2, the submission | https://x.com/dreamdex/status/2 |
-
-The drafts for both are in `docs/posts.md`, and they are not published yet.
-
----
+No posts have been published. The two evidence-based drafts are in docs/posts.md. This section will contain the real publication links after posting.
 
 ## Honest limits of this build
 
-- The compiler needs a model key to translate a free sentence. The presets compile without one, and
-  the route says so plainly when the key is missing rather than inventing a policy.
-- The policy contract cannot place a perp order. See the verification results.
-- The reactive handler is written but not deployed. The badge says so.
-- No order was filled, because the paper credit was unavailable. The refusal is real and it is on
-  chain.
-- The venue's paper credit claim reverts for every address with an undocumented selector. That is
-  written up in `feedback/001-perps-paper-credit-claim-reverts.md`.
-
+- The free-text compiler needs a user-provided OpenAI API key. Presets work without it. Direct key creation: [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
+- WALLETCONNECT_PROJECT_ID is optional and currently unused because the app uses injected wallets.
+- .env exists locally, is ignored by Git, and contains testnet signing keys generated locally. Never copy those keys to GitHub or Vercel.
+- .env.example contains the public Hideki configuration and blank secret fields.
+- The live reactive handler is compiled but not deployed because the subscription requires 32 STT. The app shows NOT DEPLOYED.
+- X posts and a short demo recording remain communication tasks; their status is not represented as complete.

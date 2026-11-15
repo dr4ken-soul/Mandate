@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount, useDisconnect, useWriteContract } from "wagmi";
 import { ChevronDown, Copy, ExternalLink } from "lucide-react";
-import { explorerAddress } from "@/lib/chain/chain";
+import { explorerAddress, explorerTx, hidekiTestnet } from "@/lib/chain/chain";
+import { publicClient } from "@/lib/chain/reads";
 import { markWalletDisconnected } from "@/lib/session";
+import { mandateAbi } from "@/lib/chain/abi";
+import type { Address } from "viem";
 import { useMandate } from "@/lib/chain/useMandate";
 
 /**
@@ -16,12 +19,38 @@ import { useMandate } from "@/lib/chain/useMandate";
 export function WalletMenu() {
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
+  const { writeContractAsync } = useWriteContract();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const [revokePending, setRevokePending] = useState(false);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
+  const [revokeHash, setRevokeHash] = useState<string | null>(null);
   const container = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const { mandate, enforcementMode } = useMandate(address);
+
+  const revokeOperator = async () => {
+    if (!address) return;
+    setRevokePending(true);
+    setRevokeError(null);
+    try {
+      const hash = await writeContractAsync({
+        address: process.env.NEXT_PUBLIC_MANDATE_ADDRESS as Address,
+        abi: mandateAbi,
+        functionName: "revoke",
+        chainId: hidekiTestnet.id,
+      });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") throw new Error("The revoke transaction reverted.");
+      setRevokeHash(hash);
+      setConfirmRevoke(false);
+    } catch (error) {
+      setRevokeError(error instanceof Error ? error.message.slice(0, 160) : "The revoke transaction failed.");
+    } finally {
+      setRevokePending(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -130,37 +159,76 @@ export function WalletMenu() {
           ) : null}
 
           <div className="border-t border-rule-hair px-4 py-3">
-            {confirmRevoke ? (
-              <div className="flex items-center gap-3">
+            {revokeHash ? (
+              <a
+                href={explorerTx(revokeHash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-[0.75rem] uppercase tracking-[0.12em] text-ink"
+              >
+                Mandate revoked on chain
+              </a>
+            ) : mandate?.status === 1 ? (
+              confirmRevoke ? (
+                <div className="space-y-3">
+                  <p className="font-sans text-[0.8125rem] leading-[1.5] text-ink-secondary">
+                    This owner-signed transaction revokes the mandate and stops new orders through it.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={revokePending}
+                      onClick={() => void revokeOperator()}
+                      className="font-mono text-[0.75rem] uppercase tracking-[0.12em] text-signal-text disabled:opacity-45"
+                    >
+                      {revokePending ? "Confirm in wallet" : "Confirm revoke"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={revokePending}
+                      onClick={() => setConfirmRevoke(false)}
+                      className="font-mono text-[0.75rem] uppercase tracking-[0.12em] text-ink-tertiary disabled:opacity-45"
+                    >
+                      Keep it
+                    </button>
+                  </div>
+                </div>
+              ) : (
                 <button
                   type="button"
                   onClick={() => {
-                    disconnect();
-                    markWalletDisconnected();
-                    setConfirmRevoke(false);
-                    setOpen(false);
+                    setRevokeError(null);
+                    setConfirmRevoke(true);
                   }}
-                  className="font-mono text-[0.75rem] uppercase tracking-[0.12em] text-signal-text"
+                  className="font-mono text-[0.75rem] uppercase tracking-[0.12em] text-signal-text transition-colors duration-[220ms] hover:text-signal"
                 >
-                  Confirm revoke
+                  Revoke operator
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmRevoke(false)}
-                  className="font-mono text-[0.75rem] uppercase tracking-[0.12em] text-ink-tertiary"
-                >
-                  Keep it
-                </button>
-              </div>
+              )
             ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmRevoke(true)}
-                className="font-mono text-[0.75rem] uppercase tracking-[0.12em] text-signal-text transition-colors duration-[220ms] hover:text-signal"
-              >
-                Revoke operator
-              </button>
+              <p className="font-mono text-[0.75rem] uppercase tracking-[0.12em] text-ink-tertiary">
+                Mandate not active
+              </p>
             )}
+            {revokeError ? (
+              <p role="alert" className="mt-3 break-words font-mono text-[0.6875rem] text-signal-text">
+                {revokeError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="border-t border-rule-hair px-4 py-3">
+            <button
+              type="button"
+              onClick={() => {
+                disconnect();
+                markWalletDisconnected();
+                setOpen(false);
+              }}
+              className="font-mono text-[0.75rem] uppercase tracking-[0.12em] text-ink-tertiary transition-colors duration-[220ms] hover:text-ink"
+            >
+              Disconnect wallet
+            </button>
           </div>
         </div>
       ) : null}

@@ -216,6 +216,7 @@ contract Mandate {
     /// @return equity The equity of the account at this block.
     function getMandate(address owner)
         external
+        view
         returns (
             uint8 status,
             address executor,
@@ -267,13 +268,13 @@ contract Mandate {
     }
 
     /// @notice The exposure an account holds in one market, in quote units.
-    function getMarketNotional(address owner, address pool) external returns (uint128) {
+    function getMarketNotional(address owner, address pool) external view returns (uint128) {
         (uint256 notional,) = _marketNotional(owner, pool);
         return uint128(notional);
     }
 
     /// @notice The leverage an account would carry after the request, in basis points.
-    function getLeverageBps(address owner, uint256 extraNotional) external returns (uint256) {
+    function getLeverageBps(address owner, uint256 extraNotional) external view returns (uint256) {
         int256 equity = marginBank.getAccountEquity(owner);
         if (equity <= 0) return type(uint256).max;
         (uint256 total,) = _totalNotional(owner);
@@ -305,9 +306,10 @@ contract Mandate {
     /// @return clause The clause that bound, zero when the venue gate bound.
     function previewAdmit(MandateTypes.OrderRequest calldata req)
         external
+        view
         returns (uint8 code, uint128 compared, uint128 limit, uint8 clause)
     {
-        Evaluation memory evaluation = _evaluate(req);
+        Evaluation memory evaluation = _evaluatePolicy(req);
         return (evaluation.code, evaluation.compared, evaluation.limit, evaluation.clause);
     }
 
@@ -315,20 +317,25 @@ contract Mandate {
     /// @param req The order request.
     /// @return success Whether the venue accepted the order.
     /// @return orderId The venue's order id.
+    /// @dev Keep the venue's payable order path available so any value supplied
+    ///      by the caller can be forwarded to the pool.
     function admit(MandateTypes.OrderRequest calldata req)
         external
         payable
         returns (bool success, uint128 orderId)
     {
-        Evaluation memory evaluation = _evaluate(req);
-        if (evaluation.code != CODE_ADMITTED) {
-            _refuse(evaluation.code);
+        MandateTypes.Mandate storage mandate = _mandates[req.owner];
+        if (mandate.status != uint8(MandateTypes.MandateStatus.Active)) {
+            Evaluation memory statusEvaluation = _evaluatePolicy(req);
+            _refuse(statusEvaluation.code);
+        }
+        if (!_isAuthorised(mandate)) {
+            _refuse(CODE_OPERATOR_REVOKED);
         }
 
-        MandateTypes.Mandate storage mandate = _mandates[req.owner];
-        uint64 expiry = req.expireTimestampNs;
-        if (expiry == 0) {
-            expiry = IPerpPool(req.market).marketExpiryNs();
+        Evaluation memory evaluation = _evaluatePolicy(req);
+        if (evaluation.code != CODE_ADMITTED) {
+            _refuse(evaluation.code);
         }
 
         (success, orderId) = IPerpPool(req.market).placeOrderFor{ value: msg.value }(
@@ -337,7 +344,7 @@ contract Mandate {
             0,
             req.price,
             req.quantity,
-            expiry,
+            req.expireTimestampNs,
             req.orderType,
             0,
             address(0),
@@ -367,15 +374,11 @@ contract Mandate {
     /// @param txRef The hash of the reverted transaction.
     function recordRefusal(MandateTypes.OrderRequest calldata req, uint8 code, bytes32 txRef) external {
         MandateTypes.Mandate storage mandate = _mandates[req.owner];
-        require(
-            msg.sender == mandate.executor || msg.sender == mandate.owner,
-            "not the executor"
-        );
+        require(_isAuthorised(mandate), "not the executor");
 
-        Evaluation memory evaluation = _evaluate(req);
-        if (evaluation.code == CODE_ADMITTED) {
-            return;
-        }
+        Evaluation memory evaluation = _evaluatePolicy(req);
+        require(evaluation.code != CODE_ADMITTED, "request is currently admitted");
+        require(code == evaluation.code, "reason code mismatch");
 
         emit Decision(
             req.owner,
@@ -394,7 +397,10 @@ contract Mandate {
     // The checks.
     // ---------------------------------------------------------------------
 
-    function _evaluate(MandateTypes.OrderRequest calldata req) internal returns (Evaluation memory evaluation) {
+    /// @dev The policy checks only. The caller is checked by the entry points
+    ///      that can change something, so a preview reads the policy and not
+    ///      the person who asked.
+    function _evaluatePolicy(MandateTypes.OrderRequest calldata req) internal view returns (Evaluation memory evaluation) {
         evaluation.clause = CLAUSE_NONE;
 
         MandateTypes.Mandate storage mandate = _mandates[req.owner];
@@ -404,12 +410,6 @@ contract Mandate {
             evaluation.code = mandate.status == uint8(MandateTypes.MandateStatus.Breach)
                 ? CODE_IN_BREACH
                 : CODE_NO_MANDATE;
-            return evaluation;
-        }
-
-        // 2. The caller has to be the executor.
-        if (msg.sender != mandate.executor && msg.sender != mandate.owner) {
-            evaluation.code = CODE_OPERATOR_REVOKED;
             return evaluation;
         }
 
@@ -606,6 +606,12 @@ contract Mandate {
         revert MandateTypes.ENoMandate(code);
     }
 
+    /// @dev Whether the caller may ask for admission on this mandate.
+    function _isAuthorised(MandateTypes.Mandate storage mandate) internal view returns (bool) {
+        address caller = msg.sender;
+        return caller == mandate.executor || caller == mandate.owner;
+    }
+
     function _isAllowed(address owner, address market) internal view returns (bool) {
         address[] storage markets = _allowedMarkets[owner];
         for (uint256 i = 0; i < markets.length; i++) {
@@ -629,14 +635,12 @@ contract Mandate {
     }
 
     function _voucherAllows(address owner, address pool) internal view returns (bool) {
-        uint64 expiry = marginBank.voucherExpiryOf(owner);
-        if (expiry == 0 || expiry <= block.timestamp) {
-            return true;
-        }
-        return marginBank.isVoucherMarketAllowed(pool);
+        // The bank exposes the active, non-withdrawable voucher floor. The
+        // expiry timestamp belongs to VoucherDistributor, not MarginBank.
+        return marginBank.getCreditFloor(owner) == 0 || marginBank.isVoucherMarketAllowed(pool);
     }
 
-    function _baseDecimals(address pool) internal returns (uint8) {
+    function _baseDecimals(address pool) internal view returns (uint8) {
         address baseToken = perpPoolFactory.getBaseTokenForPool(pool);
         return IERC20(baseToken).decimals();
     }
@@ -649,6 +653,7 @@ contract Mandate {
     /// @return code A reason code when the exposure could not be derived.
     function _marketNotional(address owner, address pool)
         internal
+        view
         returns (uint256 notional, uint8 code)
     {
         (bool priceable, uint256 markPrice) = IPerpPool(pool).tryGetMarkPrice();
@@ -666,7 +671,7 @@ contract Mandate {
 
     /// @return total The exposure across every market the account holds, in quote units.
     /// @return code A reason code when the exposure could not be derived.
-    function _totalNotional(address owner) internal returns (uint256 total, uint8 code) {
+    function _totalNotional(address owner) internal view returns (uint256 total, uint8 code) {
         // The exposure is summed over the markets the mandate allows, which is a
         // closed list of at most six pools. The venue's account read returns
         // an unusable list when it is called from a static context, so the policy

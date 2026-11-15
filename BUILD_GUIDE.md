@@ -1,8 +1,10 @@
 # BUILD_GUIDE.md
 
-Sequenced build plan for Mandate. Order matters: every phase produces something runnable, and no phase depends on a design decision that has not been made.
+Sequenced build plan for Mandate. The dates below are the original plan; the audit status is updated to the actual project state as of 15 November 2026. A later dreamDEX organizer notice advertised 15 November as the closing day. Confirm the portal's current cutoff and whitelist acceptance before relying on submission availability.
 
-Four days. Today is 28 October 2026. Submission closes 1 November 2026, 23:59 UTC.
+## Final audit: 15 November 2026
+
+The current Hideki deployment, admitted BTC-PERP fill, refusal and refusal record, bridged collateral, spot fill, and full position reduction were rechecked against chain receipts. GitHub currently contains the earlier pushed baseline; the local completion changes still need a final commit and push. The Vercel project and production deployment are also still pending at this audit point.
 
 ---
 
@@ -92,37 +94,36 @@ The plate has three states and only three. `DECISION` is a recorded event with a
 
 **Chain**
 
-- [ ] A real BTC-PERP or ETH-PERP order placed on 50383, hash in the README
-- [ ] A refused order with the code visible and its hash in the README
-- [ ] `previewAdmit` matches `admit` for all 20 fixture cases
-- [ ] `forge test` green without a fork
-- [ ] Enforcement path labeled honestly against `ENFORCEMENT_MODE`
+- [x] A real BTC-PERP order was placed through Mandate on 50383 and filled: 0x9a276ba37aec4a7797a886ea11964c164aadb01975cbe6c10fc403e9608382aa.
+- [x] The demo position was reduced and the current MarginBank position is zero: 0x6813e346b5c98427baa0cd0846d8dd5fe0658e24fc4294f63427fb0298d9d04f.
+- [x] A refused order returned code 0x08 and its Decision was recorded in a second transaction.
+- [x] previewAdmit parity fixtures pass; the Foundry suite passed all 68 tests offline in this audit.
+- [x] The interface reports NOT DEPLOYED for reactive enforcement. MandateWatch is not represented as live.
 
 **Repository**
 
-- [ ] README answers what it is, who it is for, how to run it, in that order
-- [ ] README states the two verification results and both fallbacks, whichever applied
-- [ ] README has the `X posts` section with the three links
-- [ ] `.env.example` complete, no real values anywhere in the tree
-- [ ] Limits section present and specific
-- [ ] `feedback/` items reproducible from the instructions in each file
+- [x] README explains the product, audience, setup and verified testnet evidence.
+- [x] README explains the operator check, corrected replay, credit-floor and expiry getter findings.
+- [ ] X posts section has publication links. No posts have been published; truthful drafts are in docs/posts.md.
+- [x] .env.example has public testnet configuration and blank secret fields. The real .env is ignored and local only.
+- [x] Limits are stated, including the undeployed reactive handler and testnet-only funding.
+- [x] The paper-credit report documents a reproducible claim failure and no longer calls the failed claim the only collateral path.
+- [ ] The current completion commit still needs to be pushed to GitHub.
+- [ ] A new Vercel project and production deployment still need verification.
 
 **Interface**
 
-- [ ] Every spec animation value implemented as written
-- [ ] No banned pattern from FRONTEND_SPEC.md's self-check list survives
-- [ ] Deep link refresh into a nested console route works on the deployment
-- [ ] Mid-session disconnect returns to the landing page with a toast
-- [ ] Reduced motion honored on every reveal
-- [ ] Contrast checked on the refusal color and the secondary text
+- [x] Public receipt pages are outside the wallet-gated route group and resolve from either the refused-order hash or the decision-record hash.
+- [x] The disconnect action is separate from on-chain mandate revocation; the revoke button sends the owner's revoke transaction.
+- [x] Reduced-motion preferences are handled in the global stylesheet and landing reveal components.
+- [ ] Production deep-link refresh is pending Vercel deployment and live fetch verification.
+- [ ] Browser interaction checks for wallet connect, disconnect toast and revoke confirmation remain pending.
 
 **Communication**
 
-- [ ] Both posts live, each tagging the venue account, published in order
-- [ ] Each post contains a screenshot or a hash, not just a claim
-- [ ] Demo recording under three minutes, opening on the refusal
-
----
+- [ ] Both posts published in order. Drafts are prepared but not published.
+- [x] Each draft includes verified transaction hashes.
+- [ ] Demo recording under three minutes, opening on the refusal.
 
 ## Failure modes worth naming in advance
 

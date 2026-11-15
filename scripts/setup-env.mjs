@@ -29,9 +29,11 @@ const publicValues = {
   NEXT_PUBLIC_VOUCHER_DISTRIBUTOR_ADDRESS: "0x2ACD9EFdA721450906bfE1bef3edE269636E42C4",
   NEXT_PUBLIC_BTC_POOL_ADDRESS: "0x4181dd08E73BbCdd1Ba3E615A18f6abD941b94C0",
   NEXT_PUBLIC_ETH_POOL_ADDRESS: "0xD6Cb1DD58580B84D76068aC21594219ce03aeddf",
-  NEXT_PUBLIC_MANDATE_ADDRESS: "",
+  NEXT_PUBLIC_MANDATE_ADDRESS: "0x7b0076508b4545175f2a70511ab559bae9638ed3",
   NEXT_PUBLIC_WATCH_ADDRESS: "",
-  NEXT_PUBLIC_DEMO_DECISION_ID: "",
+  NEXT_PUBLIC_DEMO_DECISION_ID: "0xa1ec4135762287ad83b582702c77cffc980f2556c8efb79607bb0ffdbaa8deb6",
+  NEXT_PUBLIC_OWNER_ADDRESS: "",
+  NEXT_PUBLIC_ENFORCEMENT_MODE: "chain",
 };
 
 const secretDefaults = {
@@ -66,13 +68,25 @@ function keyFor(name) {
 
 const deployerKey = keyFor("DEPLOYER_PRIVATE_KEY");
 const executorKey = keyFor("EXECUTOR_PRIVATE_KEY");
+const deployer = privateKeyToAccount(deployerKey);
+const executor = privateKeyToAccount(executorKey);
+
+const configuredPublicValues = { ...publicValues };
+for (const key of [
+  "NEXT_PUBLIC_MANDATE_ADDRESS",
+  "NEXT_PUBLIC_WATCH_ADDRESS",
+  "NEXT_PUBLIC_DEMO_DECISION_ID",
+]) {
+  if (existing.get(key)) configuredPublicValues[key] = existing.get(key);
+}
+configuredPublicValues.NEXT_PUBLIC_OWNER_ADDRESS = deployer.address;
 
 const lines = [
   "# Mandate environment.",
   "# Chain 50383, the Somnia Tokyo testnet. Written by scripts/setup-env.mjs.",
   "",
   "# Public values. These reach the browser.",
-  ...Object.entries(publicValues).map(([key, value]) => `${key}=${value}`),
+  ...Object.entries(configuredPublicValues).map(([key, value]) => `${key}=${value}`),
   "",
   "# Secrets. These stay on the server.",
   ...Object.entries(secretDefaults)
@@ -95,7 +109,7 @@ const example = [
   "# Copy to .env and fill in the secrets. The public values are correct for the",
   "# Somnia Tokyo testnet, chain 50383.",
   "",
-  ...Object.entries(publicValues).map(([key, value]) => `${key}=${value}`),
+  ...Object.entries(configuredPublicValues).map(([key, value]) => `${key}=${value}`),
   "",
   ...Object.entries(secretDefaults).map(([key, value]) => `${key}=${value}`),
   "",
@@ -103,10 +117,7 @@ const example = [
 
 writeFileSync(examplePath, example.join("\n"), "utf8");
 
-const deployer = privateKeyToAccount(deployerKey).address;
-const executor = privateKeyToAccount(executorKey).address;
-
-console.log(`deployer ${deployer}`);
-console.log(`executor ${executor}`);
+console.log(`deployer ${deployer.address}`);
+console.log(`executor ${executor.address}`);
 console.log(`wrote ${envPath}`);
 console.log(`wrote ${examplePath}`);

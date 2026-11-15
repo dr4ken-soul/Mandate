@@ -13,11 +13,12 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const FAUCET_URL = "https://explorer.testnet.somnia.network/tokyo/faucet";
+const FAUCET_URL =
+  process.env.SOMNIA_FAUCET_URL ?? "https://explorer.testnet.somnia.network/tokyo/faucet";
 const CHROME = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const PORT = Number(process.env.CDP_PORT ?? 9333);
 const USER_AGENT =
@@ -213,5 +214,7 @@ try {
   if (hash) console.log(`tx ${hash}`);
 } finally {
   browser.kill();
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  rmSync(profile, { recursive: true, force: true });
 }
 

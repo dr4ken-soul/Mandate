@@ -1,0 +1,14 @@
+{
+  "chainId": 50383,
+  "pool": "0xbe6c45bf96e1b4e5ec4655bdae0f23c0410db35d",
+  "pair": "STT/USDso",
+  "trader": "0xc71D842F98c1B15dc6d72660F25dD60f2598C463",
+  "tx": "0x58cd9915b8bd5be9f8621d515cdc934957917ae150cb8335cf41f8d725e1fa91",
+  "block": "50316153",
+  "baseQuantity": "1000000000000000000",
+  "fillPrice": "144000000000000000",
+  "usdsoBefore": "0",
+  "usdsoAfter": "144000000000000000",
+  "usdsoReceived": "144000000000000000",
+  "gasUsed": "1175764"
+}

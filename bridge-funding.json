@@ -1,0 +1,18 @@
+{
+  "sourceChainId": 50312,
+  "destinationChainId": 50383,
+  "owner": "0x0B55a453B3F95a43E0327439E8932ae82Bc7aF0e",
+  "amount": "100000000000000000000",
+  "sourceInitial": "100000000000000000000",
+  "sourceBalanceAfterMint": "200000000000000000000",
+  "destinationInitial": "0",
+  "destinationBalance": "100000000000000000000",
+  "delivered": true,
+  "mintTx": "0x54c63123f8da90b2d33a774698ddec18e6c1b0707e4137d6b195120a1fe71ffc",
+  "mintBlock": "541135358",
+  "approveTx": "0x47192e45876df3c85a76334c939e92b4f664ee8bc23eea93efec65dcfdfa43ea",
+  "bridgeTx": "0x0769bd02b72d4dca4979b5608220464fa271bd63d9d83affc8a903b42152863d",
+  "bridgeBlock": "541135418",
+  "bridgeMessageId": null,
+  "bridgeGasQuote": "0"
+}

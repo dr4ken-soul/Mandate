@@ -44,13 +44,19 @@ function findData(error, depth = 0) {
   return null;
 }
 
+// The reason is replayed, because a reverted transaction keeps its reason in
+// the call data and not in the receipt.
+//
+// The replay is a call against the head state with the real sender. Two other
+// options do not work on this node: a call against a past block returns an
+// empty result, and an estimate drops the sender, so the contract runs as the
+// zero address and reports a different reason.
 let data = null;
 try {
   await client.call({
-    to: receipt.to,
+    to: transaction.to,
     data: transaction.input,
-    from: transaction.from,
-    blockNumber: receipt.blockNumber,
+    account: transaction.from,
   });
   data = "0x";
 } catch (error) {
@@ -61,6 +67,7 @@ if (typeof data !== "string" || data === "0x") {
   console.log("no revert data");
   process.exit(0);
 }
+
 
 const selector = `0x${data.slice(2, 10)}`;
 const code = Number.parseInt(data.slice(72, 74), 16);

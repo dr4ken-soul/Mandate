@@ -1,4 +1,10 @@
 {
-  "usdso": "0",
-  "equity": "0"
+  "chainId": 50383,
+  "owner": "0x0B55a453B3F95a43E0327439E8932ae82Bc7aF0e",
+  "amount": "100000000000000000000",
+  "approvalTx": null,
+  "depositTx": "0x60d3ddb56dd1b2db47db236c65d7e166132c5711deb3b9f7e7edf17f204a264d",
+  "depositBlock": "50338938",
+  "equity": "100000000000000000000",
+  "remainingToken": "0"
 }

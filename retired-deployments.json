@@ -1,0 +1,25 @@
+{
+  "chainId": 50383,
+  "records": [
+    {
+      "address": "0xc4059221964000b581934ca37cfa874519a1f245",
+      "priorStatus": 1,
+      "revokeTx": "0x4dae7575f05e153210c185973a215a2bed9ac7dbe5ab2817c1b84a8537839d2e",
+      "poolGrantTx": "0x9075b9fac2ac593694284140f21764cdf5c1e255389a6f50e9a3267e7ec1a388",
+      "globalGrantTx": "0x7650f0c1be79d12b19c1bdb4e1e5c5a5f51362aa1cae264f70ae8bc8ef960e9e",
+      "finalStatus": 3,
+      "poolAuthorized": false,
+      "globallyAuthorized": false
+    },
+    {
+      "address": "0x5ccd0ab6113744a0aa915def7ba1d3c1fa599564",
+      "priorStatus": 1,
+      "revokeTx": "0x84812069bf9d86bd30998e5baeb2243287599a8a8de07ef8d2bd62341eaa2866",
+      "poolGrantTx": "0x9d08e880490e988f83584a9c462fb9ff0c5a7557c8fee42f1478d10a93ecfbb2",
+      "globalGrantTx": "0x24a23a3f4a4c152d0e03a9321ff74b7f61c60fb040f9f4f7b81f8ac91805deb6",
+      "finalStatus": 3,
+      "poolAuthorized": false,
+      "globallyAuthorized": false
+    }
+  ]
+}

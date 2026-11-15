@@ -76,7 +76,7 @@ const hash = await wallet.writeContract({
   abi: mandateAbi,
   functionName: "admit",
   args: [request],
-  gas: 100_000_000n,
+  gas: BigInt(process.argv[3] ?? 1_000_000),
 });
 const receipt = await client.waitForTransactionReceipt({ hash });
 console.log(`tx ${hash} status ${receipt.status} gas ${receipt.gasUsed}`);
@@ -87,8 +87,7 @@ if (receipt.status !== "success") {
     await client.call({
       to: mandate,
       data: receipt.input,
-      from: executor.address,
-      blockNumber: receipt.blockNumber,
+      account: executor.address,
     });
   } catch (error) {
     const walk = (e, depth = 0) => {
@@ -107,8 +106,14 @@ if (receipt.status !== "success") {
   }
   if (data) {
     const selector = `0x${data.slice(2, 10)}`;
-    const code = Number.parseInt(data.slice(66, 68), 16);
+    if (data.length < 74) throw new Error("the revert data does not include the reason code");
+    const code = Number.parseInt(data.slice(-2), 16);
+    if (selector !== "0x47a56227" || code !== 0x08) {
+      throw new Error(`expected EMarketNotionalCap(0x08), got ${selector} code 0x${code.toString(16)}`);
+    }
     console.log(`selector ${selector} code 0x${code.toString(16).toUpperCase().padStart(2, "0")}`);
+  } else {
+    throw new Error("the refusal did not include decodable revert data; no decision was recorded");
   }
 
   // The refusal is written by a second transaction, because a revert rolls back
@@ -117,7 +122,7 @@ if (receipt.status !== "success") {
     address: mandate,
     abi: mandateAbi,
     functionName: "recordRefusal",
-    args: [request, data ? Number.parseInt(data.slice(66, 68), 16) : 8, hash],
+    args: [request, Number.parseInt(data.slice(-2), 16), hash],
     gas: 1_000_000n,
   });
   const recordReceipt = await client.waitForTransactionReceipt({ hash: recordHash });

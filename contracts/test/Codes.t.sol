@@ -224,7 +224,7 @@ contract CodesTest is MandateTest {
     }
 
     function test_0x0D_VoucherBlocked() public {
-        marginBank.setVoucher(owner, uint64(block.timestamp + 1 days));
+        marginBank.setVoucherCreditFloor(owner, 1000e18);
         marginBank.setVoucherAllows(false);
 
         MandateTypes.OrderRequest memory req = _request(1e18);

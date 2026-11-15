@@ -9,7 +9,7 @@
  * price and the equity of the wallet. Nothing is typed by hand.
  */
 
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import {
@@ -19,6 +19,7 @@ import {
   parseAbi,
   parseUnits,
   formatUnits,
+  parseEventLogs,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -91,6 +92,7 @@ const executorClient = createWalletClient({ account: executor, transport });
 const venueAbi = parseAbi([
   "function getOrderBookParameters() view returns ((uint256 tickSize, uint256 minQuantity, uint256 lotSize))",
   "function tryGetMarkPrice() view returns (bool ok, uint256 price)",
+  "function getBookLevels(bool isBid, uint64 numLevels) view returns ((uint256 price, uint256 quantity)[])",
 ]);
 
 const marginAbi = parseAbi([
@@ -110,6 +112,9 @@ const registryAbi = parseAbi([
 ]);
 
 const PLACE_ORDER_FOR = "0x80054449";
+const orderEventsAbi = parseAbi([
+  "event OrderFilled(uint128 indexed takerOrderId, uint128 indexed makerOrderId, uint256 quantityFilled, uint256 takerRemainingQuantity, uint256 makerRemainingQuantity, uint256 fillPrice)",
+]);
 
 /** The venue wants a generous limit, so the estimate is skipped. */
 const GAS = 10_000_000n;
@@ -118,6 +123,19 @@ const GAS = 10_000_000n;
 const DEPLOY_GAS = 60_000_000n;
 
 const log = (line) => console.log(line);
+
+function findRevertData(error, depth = 0) {
+  if (!error || depth > 6 || typeof error !== "object") return null;
+  for (const key of ["data", "raw", "revertData"]) {
+    const value = error[key];
+    if (typeof value === "string" && /^0x[0-9a-fA-F]{8,}$/.test(value)) return value;
+  }
+  for (const key of ["cause", "error", "details"]) {
+    const found = findRevertData(error[key], depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
 
 /** Send a transaction and wait for it to be mined. */
 async function send(client, request, label) {
@@ -134,9 +152,22 @@ async function send(client, request, label) {
 // 1. The contract.
 // ---------------------------------------------------------------------
 
-let mandateAddress = env.get("NEXT_PUBLIC_MANDATE_ADDRESS");
+// The contract is always deployed from the artifact that was just built,
+// unless --reuse is passed. A stale deployment is how a run ends up
+// exercising code that is not the code under review.
+const reuseAddress = process.argv.find((argument) => argument.startsWith("--reuse="))?.slice("--reuse=".length);
+const reuse = process.argv.includes("--reuse") || Boolean(reuseAddress);
+let mandateAddress = reuseAddress ?? (reuse ? env.get("NEXT_PUBLIC_MANDATE_ADDRESS") : undefined);
+let previousDeployment = null;
+try {
+  previousDeployment = JSON.parse(readFileSync(join(root, "deployment.json"), "utf8"));
+} catch {
+  // A first deployment has no report to preserve.
+}
+const reportMatchesMandate = previousDeployment?.mandate?.toLowerCase() === mandateAddress?.toLowerCase();
+let deploymentHash = reportMatchesMandate ? previousDeployment.deploymentTx ?? null : null;
 if (!mandateAddress) {
-  const hash = await deployerClient.deployContract({
+  deploymentHash = await deployerClient.deployContract({
     abi: mandateAbi,
     bytecode: artifact.bytecode.object.startsWith("0x") ? artifact.bytecode.object : `0x${artifact.bytecode.object}`,
     args: [MARGIN_BANK, POOL_FACTORY, OPERATOR_REGISTRY],
@@ -145,10 +176,10 @@ if (!mandateAddress) {
     maxFeePerGas: fees.maxFeePerGas,
     maxPriorityFeePerGas: 0n,
   });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: deploymentHash });
   if (receipt.status !== "success") throw new Error("the deployment reverted");
   mandateAddress = receipt.contractAddress;
-  log(`mandate deployed ${mandateAddress} (gas ${receipt.gasUsed})`);
+  log(`mandate deployed ${mandateAddress} tx ${deploymentHash} (gas ${receipt.gasUsed})`);
 } else {
   log(`mandate ${mandateAddress}`);
 }
@@ -157,13 +188,21 @@ if (!mandateAddress) {
 // 2. The paper credit, which is the perps collateral on testnet.
 // ---------------------------------------------------------------------
 
+const currentEquity = await publicClient.readContract({
+  address: MARGIN_BANK,
+  abi: marginAbi,
+  functionName: "getAccountEquity",
+  args: [deployer.address],
+});
 const claimed = await publicClient.readContract({
   address: VOUCHER,
   abi: voucherAbi,
   functionName: "isClaimed",
   args: [deployer.address],
 });
-if (!claimed) {
+if (currentEquity > 0n) {
+  log(`paper credit skipped; owner already has ${formatUnits(currentEquity, 18)} USDso margin`);
+} else if (!claimed) {
   try {
     await send(
       deployerClient,
@@ -208,8 +247,9 @@ const poolAuthorized = await publicClient.readContract({
   functionName: "isOperatorAuthorized",
   args: [deployer.address, mandateAddress, PLACE_ORDER_FOR],
 });
-if (true) {
-  await send(
+let poolGrantHash = reportMatchesMandate ? previousDeployment.operatorGrants?.perPool ?? null : null;
+if (!poolAuthorized) {
+  const grant = await send(
     deployerClient,
     {
       address: OPERATOR_REGISTRY,
@@ -221,6 +261,7 @@ if (true) {
     },
     "per pool operator grant",
   );
+  poolGrantHash = grant.hash;
 } else {
   log("per pool operator grant already in place");
 }
@@ -231,8 +272,9 @@ const globallyAuthorized = await publicClient.readContract({
   functionName: "isGloballyApproved",
   args: [deployer.address, mandateAddress, PLACE_ORDER_FOR],
 });
+let globalGrantHash = reportMatchesMandate ? previousDeployment.operatorGrants?.global ?? null : null;
 if (!globallyAuthorized) {
-  await send(
+  const grant = await send(
     deployerClient,
     {
       address: OPERATOR_REGISTRY,
@@ -244,6 +286,7 @@ if (!globallyAuthorized) {
     },
     "operator grant",
   );
+  globalGrantHash = grant.hash;
 } else {
   log("operator grant already in place");
 }
@@ -328,6 +371,12 @@ const mark = await publicClient.readContract({
   abi: venueAbi,
   functionName: "tryGetMarkPrice",
 });
+const asks = await publicClient.readContract({
+  address: BTC_POOL,
+  abi: venueAbi,
+  functionName: "getBookLevels",
+  args: [false, 20n],
+});
 const equity = await publicClient.readContract({
   address: MARGIN_BANK,
   abi: marginAbi,
@@ -356,7 +405,7 @@ function sizeFor(notional) {
   return onLot(raw);
 }
 
-const orderRequest = (price, quantity, reduceOnly) => ({
+const orderRequest = (price, quantity, reduceOnly, expireTimestampNs = 0n) => ({
   owner: deployer.address,
   market: BTC_POOL,
   isBid: true,
@@ -364,16 +413,62 @@ const orderRequest = (price, quantity, reduceOnly) => ({
   quantity,
   reduceOnly,
   armsStop: false,
-  expireTimestampNs: 0n,
+  expireTimestampNs,
   orderType: 2,
 });
 
-const allowedPrice = onTick(mark[1]);
-const allowedQuantity = sizeFor(parseUnits("100", 18));
+const previewAbi = parseAbi([
+  "function previewAdmit((address owner, address market, bool isBid, uint256 price, uint256 quantity, bool reduceOnly, bool armsStop, uint64 expireTimestampNs, uint8 orderType) request) returns (uint8 code, uint128 compared, uint128 limit, uint8 clause)",
+]);
+const allowedQuantity = grid.minQuantity;
+let visibleAskDepth = 0n;
+let firstFillableAsk = 0n;
+for (const ask of asks) {
+  visibleAskDepth += ask.quantity;
+  if (visibleAskDepth >= allowedQuantity) {
+    firstFillableAsk = ask.price;
+    break;
+  }
+}
+if (firstFillableAsk === 0n) throw new Error("the BTC-PERP ask book has less than one minimum order of liquidity");
+if (firstFillableAsk % grid.tickSize !== 0n || allowedQuantity % grid.lotSize !== 0n) {
+  throw new Error("the live BTC-PERP ask book or minimum quantity is off the venue grid");
+}
+// Allow half a percent above the visible ask to absorb book movement while
+// keeping the minimum-size test order's worst-case spend below 9 USDso.
+const rawAllowedPrice = (firstFillableAsk * 1005n) / 1000n;
+const allowedPrice = ((rawAllowedPrice + grid.tickSize - 1n) / grid.tickSize) * grid.tickSize;
 const refusedPrice = onTick(mark[1]);
 const refusedQuantity = sizeFor(parseUnits("2000", 18));
+const orderHead = await publicClient.getBlock({ blockTag: "latest" });
+const allowedExpiryNs = orderHead.timestamp * 1_000_000_000n + 120_000_000_000n;
+const allowedRequest = orderRequest(allowedPrice, allowedQuantity, false, allowedExpiryNs);
 
-log(`allowed order ${formatUnits(allowedQuantity, baseDecimals)} BTC at ${formatUnits(allowedPrice, 18)}`);
+log(`allowed order ${formatUnits(allowedQuantity, baseDecimals)} BTC at live ask ${formatUnits(allowedPrice, 18)}`);
+
+const allowedPreview = await publicClient.readContract({
+  address: mandateAddress,
+  abi: previewAbi,
+  functionName: "previewAdmit",
+  args: [allowedRequest],
+  account: executor.address,
+});
+log(`preview of the allowed order: code ${allowedPreview[0]} compared ${allowedPreview[1]} limit ${allowedPreview[2]}`);
+if (allowedPreview[0] !== 0) {
+  throw new Error(`the minimum-size order is not allowed under this policy: code ${allowedPreview[0]}`);
+}
+
+const allowedSimulation = await publicClient.simulateContract({
+  address: mandateAddress,
+  abi: mandateAbi,
+  functionName: "admit",
+  args: [allowedRequest],
+  account: executor,
+});
+if (!allowedSimulation.result[0]) {
+  throw new Error("the venue simulation did not accept the allowed test order");
+}
+log(`venue simulation accepted order id ${allowedSimulation.result[1]}`);
 
 let allowed = null;
 try {
@@ -383,7 +478,7 @@ try {
       address: mandateAddress,
       abi: mandateAbi,
       functionName: "admit",
-      args: [orderRequest(allowedPrice, allowedQuantity, false)],
+      args: [allowedRequest],
       chain: null,
       gas: GAS,
     },
@@ -393,14 +488,21 @@ try {
   log(`the allowed order did not go through: ${error.shortMessage ?? error.message}`);
 }
 
+const allowedFillLogs = allowed
+  ? parseEventLogs({ abi: orderEventsAbi, logs: allowed.receipt.logs, eventName: "OrderFilled", strict: false })
+  : [];
+const allowedFilledQuantity = allowedFillLogs.reduce(
+  (total, event) => total + (event.args.quantityFilled ?? 0n),
+  0n,
+);
+if (allowed && allowedFilledQuantity === 0n) {
+  log("the venue accepted the call but emitted no OrderFilled event");
+}
+
 log(`refused order ${formatUnits(refusedQuantity, baseDecimals)} BTC at ${formatUnits(refusedPrice, 18)}`);
 
-// The deployment is checked before anything is sent. If the contract does not
-// refuse the order in a read, the build is wrong and the demo would publish a
-// transaction that means nothing.
-const previewAbi = parseAbi([
-  "function previewAdmit((address owner, address market, bool isBid, uint256 price, uint256 quantity, bool reduceOnly, bool armsStop, uint64 expireTimestampNs, uint8 orderType) request) returns (uint8 code, uint128 compared, uint128 limit, uint8 clause)",
-]);
+// The deployment is checked before the refusal is sent. If the contract does
+// not predict the stated code, no misleading transaction is produced.
 const preview = await publicClient.readContract({
   address: mandateAddress,
   abi: previewAbi,
@@ -431,30 +533,34 @@ if (refusalReceipt.status === "success") {
 }
 
 // A revert keeps its reason in the call data, not in the receipt, so the reason
-// is read by replaying the call at the block before the transaction.
+// is read by replaying the call with the same sender.
+//
+// The replay runs against the head state. A call against a past block returns
+// an empty result on this node, and an estimate drops the sender, so the
+// contract runs as the zero address and reports a different reason.
+const refusalTransaction = await publicClient.getTransaction({ hash: refusalHash });
 const replay = await publicClient
   .call({
     to: mandateAddress,
-    data: refusalReceipt.input ?? "0x",
-    from: executor.address,
-    blockNumber: refusalReceipt.blockNumber - 1n,
+    data: refusalTransaction.input,
+    account: executor.address,
   })
-  .catch((error) => {
-    const data = error?.data ?? error?.cause?.data ?? error?.details;
-    return typeof data === "string" && data.startsWith("0x") ? data : null;
-  });
-if (replay && replay !== "0x") {
+  .catch((error) => findRevertData(error));
+if (replay && replay !== "0x" && replay.length >= 74) {
   refusalSelector = `0x${replay.slice(2, 10)}`;
-  refusalCode = Number.parseInt(replay.slice(74, 78), 16);
+  refusalCode = Number.parseInt(replay.slice(-2), 16);
 }
 log(`the refusal reverted with ${refusalSelector} code ${refusalCode}`);
+if (refusalSelector !== "0x47a56227" || refusalCode !== 0x08) {
+  throw new Error("the replay did not prove the expected 0x08 refusal; no decision was recorded");
+}
 // The refusal is written by a second transaction, because a revert rolls back
 // the log that would have recorded it.
 const recordHash = await executorClient.writeContract({
   address: mandateAddress,
   abi: mandateAbi,
   functionName: "recordRefusal",
-  args: [orderRequest(refusedPrice, refusedQuantity, false), refusalCode ?? 8, refusalHash],
+  args: [orderRequest(refusedPrice, refusedQuantity, false), refusalCode, refusalHash],
   chain: null,
 });
 const recordReceipt = await publicClient.waitForTransactionReceipt({ hash: recordHash });
@@ -465,15 +571,22 @@ const output = {
   chainId: CHAIN_ID,
   rpc: RPC,
   mandate: mandateAddress,
+  deploymentTx: deploymentHash,
   executor: executor.address,
   owner: deployer.address,
-  policyHash: mandate[0].policyHash,
+  policyHash: mandate[2],
   registration: registration.hash,
+  operatorGrants: {
+    perPool: poolGrantHash,
+    global: globalGrantHash,
+  },
   allowedOrder: allowed
     ? {
         tx: allowed.hash,
         price: allowedPrice.toString(),
         quantity: allowedQuantity.toString(),
+        filledQuantity: allowedFilledQuantity.toString(),
+        fillPrices: allowedFillLogs.map((event) => event.args.fillPrice.toString()),
         baseDecimals,
       }
     : null,
@@ -500,6 +613,25 @@ const output = {
 
 writeFileSync(join(root, "deployment.json"), `${JSON.stringify(output, null, 2)}\n`, "utf8");
 log(`wrote ${join(root, "deployment.json")}`);
+
+// The web app reads the contract address from the environment. A stale
+// address in the environment is a console that shows the wrong mandate, so
+// the address that was just deployed is written back.
+const envPath = join(root, ".env");
+if (existsSync(envPath)) {
+  const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
+  const replacements = new Map([
+    ["NEXT_PUBLIC_MANDATE_ADDRESS", mandateAddress],
+    ["NEXT_PUBLIC_DEMO_DECISION_ID", recordHash],
+    ["NEXT_PUBLIC_OWNER_ADDRESS", deployer.address],
+  ]);
+  const next = lines.map((line) => {
+    const match = /^([A-Z0-9_]+)=/.exec(line);
+    return match && replacements.has(match[1]) ? `${match[1]}=${replacements.get(match[1])}` : line;
+  });
+  writeFileSync(envPath, `${next.join("\n")}`, "utf8");
+  log("updated live mandate and receipt values in .env");
+}
 
 
 

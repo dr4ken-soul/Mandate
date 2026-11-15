@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -6,7 +6,7 @@ import { ProtectedRoute } from "@/components/routing/ProtectedRoute";
 import { AppErrorBoundary } from "@/components/routing/AppErrorBoundary";
 import { WalletMenu } from "@/components/wallet/WalletMenu";
 import { enforcementLabel } from "@/lib/chain/useMandate";
-import { DisconnectToast } from "@/components/wallet/DisconnectToast";
+
 
 const NAV = [
   { href: "/console", label: "Overview" },
@@ -69,7 +69,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <main className="max-w-[92rem] px-4 py-8 sm:px-6 lg:px-10 lg:py-10">{children}</main>
       </div>
 
-      <DisconnectToast />
+
     </div>
   );
 }
@@ -83,5 +83,3 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
     </AppErrorBoundary>
   );
 }
-
-

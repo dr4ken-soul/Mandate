@@ -28,11 +28,11 @@ export const decisionEvent = {
  * Every entry is a view or a log. Nothing here can move funds.
  */
 export const mandateAbi = parseAbi([
-  "function getMandate(address owner) returns (uint8 status, address executor, bytes32 policyHash, uint64 expiresAt, uint32 maxLeverageBps, uint128 maxNotionalPerMarket, uint128 maxNotionalTotal, uint128 maxLossPerWindow, uint128 epochStartEquity, uint128 totalNotional, int256 equity)",
-  "function getEnforcementState(address owner) returns (uint8 status, uint128 maxNotionalPerMarket, bytes32 policyHash)",
-  "function getAllowedMarkets(address owner) returns (address[] markets)",
-  "function getMarketNotional(address owner, address pool) returns (uint128)",
-  "function previewAdmit((address owner, address market, bool isBid, uint256 price, uint256 quantity, bool reduceOnly, bool armsStop, uint64 expireTimestampNs, uint8 orderType) request) returns (uint8 code, uint128 compared, uint128 limit, uint8 clause)",
+  "function getMandate(address owner) view returns (uint8 status, address executor, bytes32 policyHash, uint64 expiresAt, uint32 maxLeverageBps, uint128 maxNotionalPerMarket, uint128 maxNotionalTotal, uint128 maxLossPerWindow, uint128 epochStartEquity, uint128 totalNotional, int256 equity)",
+  "function getEnforcementState(address owner) view returns (uint8 status, uint128 maxNotionalPerMarket, bytes32 policyHash)",
+  "function getAllowedMarkets(address owner) view returns (address[] markets)",
+  "function getMarketNotional(address owner, address pool) view returns (uint128)",
+  "function previewAdmit((address owner, address market, bool isBid, uint256 price, uint256 quantity, bool reduceOnly, bool armsStop, uint64 expireTimestampNs, uint8 orderType) request) view returns (uint8 code, uint128 compared, uint128 limit, uint8 clause)",
   "function register((address[] allowedMarkets, uint32 maxLeverageBps, uint128 maxNotionalPerMarket, uint128 maxNotionalTotal, uint128 maxLossPerWindow, uint64 expiresAt) input, address executor, string[6] clauseTexts) returns (bytes32 policyHash)",
   "function revoke()",
 ]);

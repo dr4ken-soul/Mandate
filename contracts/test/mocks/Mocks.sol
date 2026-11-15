@@ -27,6 +27,8 @@ contract MockPerpPool is IPerpPool {
     uint256 public lastPrice;
     uint256 public lastQuantity;
     uint8 public lastOrderType;
+    uint64 public lastExpiry;
+    bool public expiryReadFails;
 
     function setGrid(uint256 tick, uint256 min, uint256 lot) external {
         tickSize = tick;
@@ -79,11 +81,16 @@ contract MockPerpPool is IPerpPool {
         operatorAuthorized = value;
     }
 
+    function setExpiryReadFails(bool value) external {
+        expiryReadFails = value;
+    }
+
     function isOperatorAuthorized(address, address, bytes4) external view returns (bool) {
         return operatorAuthorized;
     }
 
     function marketExpiryNs() external view returns (uint64) {
+        require(!expiryReadFails, "expiry unavailable");
         return expiryNs;
     }
 
@@ -93,7 +100,7 @@ contract MockPerpPool is IPerpPool {
         uint64,
         uint256 price,
         uint256 quantity,
-        uint64,
+        uint64 expireTimestampNs,
         uint8 orderType,
         uint8,
         address,
@@ -106,6 +113,7 @@ contract MockPerpPool is IPerpPool {
         lastPrice = price;
         lastQuantity = quantity;
         lastOrderType = orderType;
+        lastExpiry = expireTimestampNs;
         return (true, 1);
     }
 }
@@ -115,7 +123,7 @@ contract MockMarginBank is IMarginBank {
     mapping(address => int256) public equity;
     mapping(address => mapping(address => int128)) public positionSize;
     mapping(address => address[]) public activePools;
-    mapping(address => uint64) public voucherExpiry;
+    mapping(address => uint256) public voucherCreditFloor;
     bool public voucherAllows = true;
     bool public isolationAllows = true;
 
@@ -132,8 +140,8 @@ contract MockMarginBank is IMarginBank {
         voucherAllows = value;
     }
 
-    function setVoucher(address account, uint64 expiry) external {
-        voucherExpiry[account] = expiry;
+    function setVoucherCreditFloor(address account, uint256 floor) external {
+        voucherCreditFloor[account] = floor;
     }
 
     function getAccountEquity(address account) external view returns (int256) {
@@ -164,13 +172,14 @@ contract MockMarginBank is IMarginBank {
         return voucherAllows;
     }
 
+    function getCreditFloor(address account) external view returns (uint256) {
+        return voucherCreditFloor[account];
+    }
+
     function isolationAllowsMarket(address, address) external view returns (bool) {
         return isolationAllows;
     }
 
-    function voucherExpiryOf(address account) external view returns (uint64) {
-        return voucherExpiry[account];
-    }
 }
 
 /// @notice A pool factory that maps a pool to a base token.

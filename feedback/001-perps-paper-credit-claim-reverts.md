@@ -1,12 +1,8 @@
 # The perps paper credit claim reverts for every address
 
-**Summary:** `VoucherDistributor.claim()` on chain 50383 reverts for every address, including a
-fresh one that has never claimed, never held a position and never held USDso. The revert carries a
-payload that is not in the published error table, and the documented eligibility conditions all
-hold, so a user cannot work out why the claim failed or what would make it succeed.
+**Summary:** VoucherDistributor.claim() on chain 50383 reverts for the tested fresh addresses, even when the documented eligibility reads pass. The revert payload changes across attempts and is not explained by the published error table.
 
-**Severity:** major. The paper credit is the only collateral a new perps account can obtain on this
-chain, so a new account cannot open a position at all.
+**Proposed severity:** normal. The paper-credit route is unusable in the observed testnet state. This report does not establish that it is the only way to fund a perps account.
 
 **Environment**
 

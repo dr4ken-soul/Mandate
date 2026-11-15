@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listDecisions } from "@/lib/chain/reads";
+import { decisionTargetHash, listDecisions } from "@/lib/chain/reads";
 import { reasonCode } from "@mandate/policy";
 import { explorerTx } from "@/lib/chain/chain";
 
@@ -85,8 +85,8 @@ export default async function DecisionsPage() {
                     0x{row.code.toString(16).toUpperCase().padStart(2, "0")}
                   </td>
                   <td className="py-3 font-mono text-[0.75rem] tabular-nums">
-                    <Link href={`/console/decisions/${row.txHash}`} className="text-ink-secondary hover:text-ink">
-                      {row.txHash.slice(0, 10)}…{row.txHash.slice(-4)}
+                    <Link href={`/console/decisions/${decisionTargetHash(row)}`} className="text-ink-secondary hover:text-ink">
+                      {decisionTargetHash(row).slice(0, 10)}…{decisionTargetHash(row).slice(-4)}
                     </Link>
                   </td>
                 </tr>

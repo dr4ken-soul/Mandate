@@ -179,7 +179,10 @@ export async function listDecisions(fromBlock?: bigint): Promise<DecisionRow[]> 
  */
 export async function findDecision(txHash: string): Promise<DecisionRow | undefined> {
   const rows = await listDecisions();
-  return rows.find((row) => row.txHash === txHash);
+  const target = txHash.toLowerCase();
+  return rows.find((row) => row.txHash.toLowerCase() === target || row.txRef.toLowerCase() === target);
 }
 
-
+export function decisionTargetHash(row: Pick<DecisionRow, "txHash" | "txRef">): string {
+  return /^0x0{64}$/i.test(row.txRef) ? row.txHash : row.txRef;
+}

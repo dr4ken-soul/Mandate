@@ -11,8 +11,8 @@ const client = createPublicClient({ transport: http(RPC, { timeout: 600_000, ret
 
 const abi = parseAbi([
   "function getOrderBookParameters() view returns ((uint256 tickSize, uint256 minQuantity, uint256 lotSize))",
-  "function getMarkPrice() view returns (uint256)",
-  "function getBookLevels() view returns ((uint256 price, uint256 size)[] bids, (uint256 price, uint256 size)[] asks)",
+  "function tryGetMarkPrice() view returns (bool ok, uint256 price)",
+  "function getBookLevels(bool isBid, uint64 numLevels) view returns ((uint256 price, uint256 quantity)[])",
 ]);
 
 const pool = process.argv[2];
@@ -21,16 +21,19 @@ const params = await client.readContract({ address: pool, abi, functionName: "ge
 console.log("grid", JSON.stringify(params, (k, v) => (typeof v === "bigint" ? v.toString() : v)));
 
 try {
-  const mark = await client.readContract({ address: pool, abi, functionName: "getMarkPrice" });
-  console.log("mark", mark.toString());
+  const [ok, price] = await client.readContract({ address: pool, abi, functionName: "tryGetMarkPrice" });
+  console.log("mark", price.toString(), "priceable", ok);
 } catch (error) {
   console.log("mark unavailable", error.shortMessage);
 }
 
 try {
-  const book = await client.readContract({ address: pool, abi, functionName: "getBookLevels" });
-  console.log("best bid", book[0][0]?.price?.toString(), "size", book[0][0]?.size?.toString());
-  console.log("best ask", book[1][0]?.price?.toString(), "size", book[1][0]?.size?.toString());
+  const [bids, asks] = await Promise.all([
+    client.readContract({ address: pool, abi, functionName: "getBookLevels", args: [true, 5n] }),
+    client.readContract({ address: pool, abi, functionName: "getBookLevels", args: [false, 5n] }),
+  ]);
+  console.log("bids", JSON.stringify(bids, (_, value) => typeof value === "bigint" ? value.toString() : value));
+  console.log("asks", JSON.stringify(asks, (_, value) => typeof value === "bigint" ? value.toString() : value));
 } catch (error) {
   console.log("book unavailable", error.shortMessage);
 }

@@ -33,6 +33,7 @@ async function readPlate(): Promise<PlateState> {
           limit: bigint;
           clause: number;
           market: Address;
+          txRef: string;
         };
         return {
           kind: "decision",
@@ -40,7 +41,7 @@ async function readPlate(): Promise<PlateState> {
           compared: args.compared.toString(),
           limit: args.limit.toString(),
           clause: args.clause,
-          txHash: match.transactionHash ?? demoId,
+          txHash: /^0x0{64}$/i.test(args.txRef) ? match.transactionHash ?? demoId : args.txRef,
           blockNumber: match.blockNumber.toString(),
           market: args.market,
         };
@@ -98,8 +99,3 @@ export async function Hero() {
     </section>
   );
 }
-
-
-
-
-

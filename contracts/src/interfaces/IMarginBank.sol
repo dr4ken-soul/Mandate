@@ -34,11 +34,13 @@ interface IMarginBank {
     /// @notice Whether paper credit may open this market.
     function isVoucherMarketAllowed(address perpPool) external view returns (bool);
 
+    /// @notice The non-withdrawable credit floor currently held by an account.
+    /// @dev A nonzero floor identifies an account subject to voucher restrictions.
+    function getCreditFloor(address account) external view returns (uint256);
+
     /// @notice Whether an isolated account may trade this market.
     function isolationAllowsMarket(address account, address market) external view returns (bool);
 
-    /// @notice When the account's paper credit expires, or zero when it has none.
-    function voucherExpiryOf(address account) external view returns (uint64);
 }
 
 

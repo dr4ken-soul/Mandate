@@ -1,19 +1,34 @@
 {
   "chainId": 50383,
-  "rpc": "https://api.hideki2.infra.testnet.somnia.network",
-  "mandate": "0x026cd82eeace8da496e541005bad67197a57349e",
+  "rpc": "https://api.hideki.infra.testnet.somnia.network/",
+  "mandate": "0xaa1c29381a7b68b59302faecb6b3fd7b74c6ad8f",
+  "deploymentTx": "0x0c1d237e9e52eb7b978262b1dcba331cc6d3f454d32fe1567375d17bb618c22b",
   "executor": "0xa9526B5B70946AdA0a97781008524Cb1F9E11f3D",
   "owner": "0x0B55a453B3F95a43E0327439E8932ae82Bc7aF0e",
-  "registration": "0x291ecb844a766d5ccc101471fb2e8e3db76f78dc944d4bd63d60f734a750570e",
-  "allowedOrder": null,
+  "policyHash": "0x3af1eb5dcbc80c5d66fcc7c9386e6593a761f6b2948b45bf2ea9ba90b503a681",
+  "registration": "0x041845c7c08f87c5f022601289644e1e3c56ad25bec9f4c1d27ce238a76a5555",
+  "operatorGrants": {
+    "perPool": "0xfd7dc43111fb02a173483ebca1900dc3c412f3fc57aa2549e78bb1dbd263f9e8",
+    "global": "0x65e804692963a1980efbfb265ec6e9120ce54517ba4a057fcddde81615b044d4"
+  },
+  "allowedOrder": {
+    "tx": "0x9a276ba37aec4a7797a886ea11964c164aadb01975cbe6c10fc403e9608382aa",
+    "price": "65010200000000000000000",
+    "quantity": "13000",
+    "filledQuantity": "13000",
+    "fillPrices": [
+      "64633900000000000000000"
+    ],
+    "baseDecimals": 8
+  },
   "refusedOrder": {
-    "tx": "0x37a2b40c41873608ee8777aa07888c17a08c17515e3217379a5784f86925ea47",
-    "selector": null,
-    "code": null,
-    "price": "71674600000000000000000",
-    "quantity": "2791000",
+    "tx": "0xc959795e02d89e48885e6ec874eaa416e157dc8e8f6141da239bd6db84de0021",
+    "selector": "0x47a56227",
+    "code": 8,
+    "price": "64621700000000000000000",
+    "quantity": "3095000",
     "baseDecimals": 8,
-    "recorded": "0x9b8541a583a89b3fa50518386d422e07bac8df36df08fd54b255446669649edf"
+    "recorded": "0xb69586ed6ae3f7866b220966371469de16da83fe65e31c0632d2c7655569833e"
   },
   "market": {
     "pool": "0x4181dd08E73BbCdd1Ba3E615A18f6abD941b94C0",
@@ -21,8 +36,21 @@
     "tickSize": "100000000000000000",
     "minQuantity": "13000",
     "lotSize": "1000",
-    "mark": "71674619753829253000000"
+    "mark": "64621795003012533500000"
   },
-  "equity": "0",
-  "runAt": "2026-11-12T18:58:19.111Z"
+  "equity": "100000000000000000000",
+  "runAt": "2026-11-14T21:28:35.253Z",
+  "reduceOrders": [
+    {
+      "tx": "0x6813e346b5c98427baa0cd0846d8dd5fe0658e24fc4294f63427fb0298d9d04f",
+      "side": "sell to reduce long",
+      "price": "64340300000000000000000",
+      "requestedQuantity": "13000",
+      "filledQuantity": "13000",
+      "fillPrices": [
+        "64669400000000000000000"
+      ]
+    }
+  ],
+  "remainingPosition": "0"
 }

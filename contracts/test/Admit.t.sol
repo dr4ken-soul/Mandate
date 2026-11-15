@@ -25,22 +25,22 @@ contract AdmitTest is MandateTest {
     function test_AnAdmittedOrderReachesThePool() public {
         MandateTypes.OrderRequest memory req = _request(1e18);
 
-        vm.recordLogs();
-        mandate.admit(req);
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        for (uint256 i = 0; i < entries.length; i++) {
-            emit log_named_string("topic", vm.toString(entries[i].topics[0]));
-            emit log_named_string("t1", vm.toString(entries[i].topics[1]));
-            emit log_named_string("t2", vm.toString(entries[i].topics[2]));
-            emit log_named_string("t3", vm.toString(entries[i].topics[3]));
-        }
-        emit log_named_uint("count", entries.length);
-
         (bool success, uint128 orderId) = mandate.admit(req);
         assertTrue(success, "the venue accepted the order");
         assertEq(orderId, 1, "the venue order id");
         assertTrue(pool.lastCallPlaced(), "the pool was called");
         assertEq(pool.lastOwner(), owner, "the order was for the owner");
+    }
+
+    function test_ImmediateOrderForwardsExpiryWithoutReadingMarketExpiry() public {
+        pool.setExpiryReadFails(true);
+        MandateTypes.OrderRequest memory req = _request(1e18);
+        req.orderType = 2;
+
+        (bool success,) = mandate.admit(req);
+
+        assertTrue(success, "an immediate order does not need the expiry getter");
+        assertEq(pool.lastExpiry(), 0, "the request expiry is forwarded as supplied");
     }
 
     function test_AnAdmittedOrderLeavesTheMandateAlone() public {
@@ -87,13 +87,15 @@ contract AdmitTest is MandateTest {
     function test_ARecordedRefusalCannotRecordAnAdmission() public {
         MandateTypes.OrderRequest memory req = _request(1e18);
 
-        vm.recordLogs();
+        vm.expectRevert();
         mandate.recordRefusal(req, 0x08, bytes32(0));
-        Vm.Log[] memory logs = vm.getRecordedLogs();
+    }
 
-        for (uint256 i = 0; i < logs.length; i++) {
-            assertTrue(logs[i].topics[0] != keccak256("Decision(address,bool,uint8,bytes32,address,uint128,uint128,uint8,bytes32)"));
-        }
+    function test_ARefusalCannotBeRecordedWithADifferentCode() public {
+        MandateTypes.OrderRequest memory req = _request(3e18);
+
+        vm.expectRevert();
+        mandate.recordRefusal(req, 0x07, bytes32(0));
     }
 
     function test_OnlyTheExecutorCanRecordARefusal() public {

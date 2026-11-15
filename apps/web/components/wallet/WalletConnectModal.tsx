@@ -1,24 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { useAccount, useConnect, useSwitchChain } from "wagmi";
 import { hidekiTestnet } from "@/lib/chain/chain";
 import { clearWalletDisconnected } from "@/lib/session";
 
 type ModalState = "idle" | "opening" | "awaiting" | "connected" | "rejected" | "wrongNetwork" | "error";
 
-/**
- * The wallet connection modal.
- *
- * The only place `connect()` is called. Every state the interface can be in is
- * named here, so no screen has to guess what happened.
- */
-export function WalletConnectModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function isUserRejection(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: number; name?: string };
+  return candidate.code === 4001 || /userrejected/i.test(candidate.name ?? "");
+}
+
+export function WalletConnectModal({
+  open,
+  onClose,
+  onConnected,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConnected: () => void;
+}) {
   const { connect, connectors, isPending } = useConnect();
   const { isConnected, chainId } = useAccount();
-  const { disconnect } = useDisconnect();
-  const { switchChain } = useSwitchChain();
+  const { switchChainAsync } = useSwitchChain();
   const [state, setState] = useState<ModalState>("idle");
 
   useEffect(() => {
@@ -27,18 +33,23 @@ export function WalletConnectModal({ open, onClose }: { open: boolean; onClose: 
       return;
     }
     if (isConnected) {
-      if (chainId !== hidekiTestnet.id) {
-        setState("wrongNetwork");
-      } else {
-        setState("connected");
-      }
+      setState(chainId === hidekiTestnet.id ? "connected" : "wrongNetwork");
     }
   }, [open, isConnected, chainId]);
 
   useEffect(() => {
+    if (!open || state !== "connected" || !isConnected || chainId !== hidekiTestnet.id) return;
+    const timer = window.setTimeout(() => {
+      onConnected();
+      onClose();
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [open, state, isConnected, chainId, onConnected, onClose]);
+
+  useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && state !== "awaiting" && state !== "opening") onClose();
+      if (event.key === "Escape" && state !== "awaiting" && state !== "opening" && state !== "connected") onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -55,7 +66,6 @@ export function WalletConnectModal({ open, onClose }: { open: boolean; onClose: 
     wrongNetwork: "Wrong network",
     error: "The wallet could not be reached",
   };
-
   const body: Record<ModalState, string> = {
     idle: "Connecting reads your address and lets the console sign for the wallet you chose. Nothing moves until you ask it to.",
     opening: "Opening your wallet",
@@ -65,7 +75,6 @@ export function WalletConnectModal({ open, onClose }: { open: boolean; onClose: 
     wrongNetwork: "Switch to Somnia Hideki (50383) to use the console.",
     error: "The wallet did not answer. Try again, or open the console in a different browser.",
   };
-
   const closable = state !== "awaiting" && state !== "opening" && state !== "connected";
 
   return (
@@ -85,40 +94,54 @@ export function WalletConnectModal({ open, onClose }: { open: boolean; onClose: 
           {title[state]}
         </h2>
         <p className="mt-3 font-sans text-[0.9375rem] leading-[1.6] text-ink-secondary">{body[state]}</p>
-
         <div className="mt-7 flex flex-wrap items-center gap-3">
-          {state === "idle" ? (
-            connectors.map((connector) => (
-              <button
-                key={connector.uid}
-                type="button"
-                disabled={isPending}
-                onClick={() => {
-                  setState("opening");
-                  connect(
-                    { connector },
-                    {
-                      onSuccess: () => setState("connected"),
-                      onError: () => setState("rejected"),
+          {state === "idle" ? connectors.map((connector) => (
+            <button
+              key={connector.uid}
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                setState("opening");
+                connect(
+                  { connector },
+                  {
+                    onSuccess: () => {
+                      clearWalletDisconnected();
+                      setState("connected");
                     },
-                  );
-                  setState("awaiting");
-                }}
-                className="h-12 border border-rule-strong px-5 font-mono text-[0.75rem] uppercase tracking-[0.16em] text-ink transition-colors duration-[220ms] hover:bg-paper-band disabled:opacity-45"
-              >
-                {connector.name}
-              </button>
-            ))
-          ) : null}
+                    onError: (error) => setState(isUserRejection(error) ? "rejected" : "error"),
+                  },
+                );
+                setState("awaiting");
+              }}
+              className="h-12 border border-rule-strong px-5 font-mono text-[0.75rem] uppercase tracking-[0.16em] text-ink transition-colors duration-[220ms] hover:bg-paper-band disabled:opacity-45"
+            >
+              {connector.name}
+            </button>
+          )) : null}
 
           {state === "wrongNetwork" ? (
             <button
               type="button"
-              onClick={() => switchChain({ chainId: hidekiTestnet.id })}
+              onClick={async () => {
+                setState("opening");
+                try {
+                  await switchChainAsync({ chainId: hidekiTestnet.id });
+                  setState("connected");
+                } catch (error) {
+                  setState(isUserRejection(error) ? "rejected" : "error");
+                }
+              }}
               className="h-12 border border-rule-strong px-5 font-mono text-[0.75rem] uppercase tracking-[0.16em] text-ink transition-colors duration-[220ms] hover:bg-paper-band"
             >
               Switch network
             </button>
+          ) : null}
+
+          {state === "opening" || state === "awaiting" ? (
+            <p className="font-mono text-[0.75rem] uppercase tracking-[0.14em] text-ink-tertiary">
+              {state === "opening" ? "Opening wallet" : "Waiting for wallet"}
+            </p>
           ) : null}
 
           {(state === "rejected" || state === "error") ? (
@@ -128,20 +151,6 @@ export function WalletConnectModal({ open, onClose }: { open: boolean; onClose: 
               className="h-12 border border-rule-strong px-5 font-mono text-[0.75rem] uppercase tracking-[0.16em] text-ink transition-colors duration-[220ms] hover:bg-paper-band"
             >
               Try again
-            </button>
-          ) : null}
-
-          {state === "connected" ? (
-            <button
-              type="button"
-              onClick={() => {
-                disconnect();
-                clearWalletDisconnected();
-                onClose();
-              }}
-              className="h-12 border border-rule-strong px-5 font-mono text-[0.75rem] uppercase tracking-[0.16em] text-ink transition-colors duration-[220ms] hover:bg-paper-band"
-            >
-              Disconnect
             </button>
           ) : null}
 
@@ -159,5 +168,3 @@ export function WalletConnectModal({ open, onClose }: { open: boolean; onClose: 
     </div>
   );
 }
-
-void injected;

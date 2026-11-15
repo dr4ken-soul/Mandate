@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { usePathname, useRouter } from "next/navigation";
-import { markWalletDisconnected, wasWalletDisconnected } from "@/lib/session";
+import { wasWalletDisconnected } from "@/lib/session";
 
 /**
  * The route gate.
@@ -69,8 +69,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       <RecoveryPlate
         message="This view needs a connected wallet."
         onRetry={() => {
-          markWalletDisconnected();
-          router.replace("/");
+          router.replace("/?connect=1&next=" + encodeURIComponent(pathname));
         }}
       />
     );
@@ -109,4 +108,3 @@ function RecoveryPlate({ message, onRetry }: { message: string; onRetry: () => v
     </div>
   );
 }
-

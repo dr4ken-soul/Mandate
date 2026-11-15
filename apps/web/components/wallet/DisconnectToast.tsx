@@ -1,22 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { markWalletDisconnected, wasWalletDisconnected } from "@/lib/session";
+import { usePathname } from "next/navigation";
+import { wasWalletDisconnected } from "@/lib/session";
 
-/**
- * The disconnect notice.
- *
- * It appears once, on the landing page, after a deliberate disconnect.
- */
+/** Show the deliberate-disconnect notice after the console returns to the landing page. */
 export function DisconnectToast() {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!wasWalletDisconnected()) return;
+    const requested =
+      pathname === "/" &&
+      new URLSearchParams(window.location.search).get("disconnected") === "1";
+    if (!requested || !wasWalletDisconnected()) {
+      setVisible(false);
+      return;
+    }
     setVisible(true);
     const timer = window.setTimeout(() => setVisible(false), 6000);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [pathname]);
 
   if (!visible) return null;
 
@@ -33,10 +37,7 @@ export function DisconnectToast() {
       </p>
       <button
         type="button"
-        onClick={() => {
-          markWalletDisconnected();
-          setVisible(false);
-        }}
+        onClick={() => setVisible(false)}
         className="mt-3 font-mono text-[0.75rem] uppercase tracking-[0.12em] text-ink-tertiary"
       >
         Close

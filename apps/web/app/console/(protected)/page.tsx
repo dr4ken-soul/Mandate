@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAccount } from "wagmi";
 import { formatQuote } from "@mandate/policy";
 import { useMandate } from "@/lib/chain/useMandate";
-import { listDecisions } from "@/lib/chain/reads";
+import { decisionTargetHash, listDecisions } from "@/lib/chain/reads";
 import { useEffect, useState } from "react";
 
 /**
@@ -17,7 +17,7 @@ export default function OverviewPage() {
   const { address } = useAccount();
   const { mandate, enforcementMode } = useMandate(address);
   const [recent, setRecent] = useState<
-    { txHash: string; blockNumber: bigint; admitted: boolean; code: number }[]
+    { txHash: string; txRef: string; blockNumber: bigint; admitted: boolean; code: number }[]
   >([]);
 
   useEffect(() => {
@@ -27,6 +27,7 @@ export default function OverviewPage() {
         setRecent(
           rows.slice(0, 5).map((row) => ({
             txHash: row.txHash,
+            txRef: row.txRef,
             blockNumber: row.blockNumber,
             admitted: row.admitted,
             code: row.code,
@@ -181,7 +182,7 @@ export default function OverviewPage() {
             recent.map((row) => (
               <Link
                 key={`${row.txHash}-${row.blockNumber.toString()}`}
-                href={`/console/decisions/${row.txHash}`}
+                href={`/console/decisions/${decisionTargetHash(row)}`}
                 className="grid grid-cols-[7rem_1fr_6rem] items-baseline gap-x-4 border-b border-rule-hair py-3 transition-colors duration-[120ms] hover:bg-paper-band"
               >
                 <span className="font-mono text-[0.75rem] tabular-nums text-ink-tertiary">
