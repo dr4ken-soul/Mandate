@@ -4,7 +4,7 @@ Sequenced build plan for Mandate. The dates below are the original plan; the aud
 
 ## Final audit: 15 November 2026
 
-The current Hideki deployment, admitted BTC-PERP fill, refusal and refusal record, bridged collateral, spot fill, and full position reduction were rechecked against chain receipts. The completion changes are pushed to GitHub in commit `a7f54ca`. A new public Vercel project is configured; its production build and receipt-route check are pending.
+The current Hideki deployment, admitted BTC-PERP fill, refusal and refusal record, bridged collateral, spot fill, and full position reduction were rechecked against chain receipts. The completion changes are pushed to GitHub. The public Vercel production project is `mandate-psycho-projects.vercel.app`; its latest build is ready and the logged-out refusal receipt was verified over HTTP.
 
 ---
 
@@ -109,14 +109,14 @@ The plate has three states and only three. `DECISION` is a recorded event with a
 - [x] Limits are stated, including the undeployed reactive handler and testnet-only funding.
 - [x] The paper-credit report documents a reproducible claim failure and no longer calls the failed claim the only collateral path.
 - [x] The current completion commit was pushed to GitHub (`a7f54ca`).
-- [ ] A new Vercel project and production deployment still need verification.
+- [x] The new Vercel project is live at https://mandate-psycho-projects.vercel.app and its production build reached READY.
 
 **Interface**
 
 - [x] Public receipt pages are outside the wallet-gated route group and resolve from either the refused-order hash or the decision-record hash.
 - [x] The disconnect action is separate from on-chain mandate revocation; the revoke button sends the owner's revoke transaction.
 - [x] Reduced-motion preferences are handled in the global stylesheet and landing reveal components.
-- [ ] Production deep-link refresh is pending Vercel deployment and live fetch verification.
+- [x] The production refusal deep link resolves without authentication and shows both transaction hashes (HTTP 200).
 - [ ] Browser interaction checks for wallet connect, disconnect toast and revoke confirmation remain pending.
 
 **Communication**

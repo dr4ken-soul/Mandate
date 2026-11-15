@@ -13,6 +13,8 @@ block, and the result is either the order or one reason code.
 **Chain 50383, the Somnia Tokyo testnet (Hideki).** Every hash in this file is on that chain and
 resolves in a browser with no wallet connected.
 
+**Production app:** [mandate-psycho-projects.vercel.app](https://mandate-psycho-projects.vercel.app). The public [refusal receipt](https://mandate-psycho-projects.vercel.app/console/decisions/0xc959795e02d89e48885e6ec874eaa416e157dc8e8f6141da239bd6db84de0021) was fetched without authentication and returns HTTP 200. Free-text compilation on the hosted app still needs `COMPILER_API_KEY`; get one at <https://platform.openai.com/api-keys>. Presets work without it.
+
 ---
 
 ## Who it is for

@@ -2,6 +2,12 @@
 
 Last rechecked: 15 November 2026. Chain 50383 is Somnia Hideki; the funding source chain is Shannon 50312. These are testnet transactions.
 
+## Vercel production app
+
+[mandate-psycho-projects.vercel.app](https://mandate-psycho-projects.vercel.app) is linked to `dr4ken-soul/Mandate` and builds the `apps/web` workspace. The production deployment reached `READY`. Unauthenticated HTTP requests to `/` and the refused-order receipt at `/console/decisions/0xc959795e02d89e48885e6ec874eaa416e157dc8e8f6141da239bd6db84de0021` returned 200; the receipt displays both the reverted order hash and the separate decision-record hash.
+
+Only `NEXT_PUBLIC_*` testnet settings are configured in Vercel. No wallet signing keys were uploaded. `COMPILER_API_KEY` is not configured there, so free-text compilation is unavailable until an API key is added; presets remain usable.
+
 ## Active Mandate
 
 | Field | Value |
