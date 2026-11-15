@@ -1,4 +1,4 @@
-import { createPublicClient, http, parseAbi, type Address } from "viem";
+import { createPublicClient, http, parseAbi, parseEventLogs, type Address, type Hash } from "viem";
 import { hidekiTestnet } from "./chain";
 import { decisionEvent, mandateAbi, perpPoolFactoryAbi } from "./abi";
 
@@ -122,6 +122,49 @@ export interface DecisionRow {
   readonly txRef: string;
 }
 
+async function decisionForTransaction(transactionHash: string): Promise<DecisionRow | undefined> {
+  if (!/^0x[0-9a-f]{64}$/i.test(transactionHash)) return undefined;
+
+  try {
+    const receipt = await publicClient.getTransactionReceipt({ hash: transactionHash as Hash });
+    const logs = parseEventLogs({
+      abi: [decisionEvent],
+      eventName: "Decision",
+      logs: receipt.logs,
+      strict: false,
+    });
+    const log = logs.find((entry) => entry.address.toLowerCase() === mandateAddress().toLowerCase());
+    if (!log) return undefined;
+
+    const args = log.args as {
+      owner: Address;
+      admitted: boolean;
+      code: number;
+      policyHash: string;
+      market: Address;
+      compared: bigint;
+      limit: bigint;
+      clause: number;
+      txRef: string;
+    };
+    return {
+      txHash: receipt.transactionHash,
+      blockNumber: receipt.blockNumber,
+      owner: args.owner,
+      admitted: args.admitted,
+      code: args.code,
+      policyHash: args.policyHash,
+      market: args.market,
+      compared: args.compared,
+      limit: args.limit,
+      clause: args.clause,
+      txRef: args.txRef,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 export async function listDecisions(fromBlock?: bigint): Promise<DecisionRow[]> {
   const toBlock = await publicClient.getBlockNumber();
   const start = fromBlock ?? (toBlock > 20_000n ? toBlock - 20_000n : 0n);
@@ -171,15 +214,38 @@ export async function listDecisions(fromBlock?: bigint): Promise<DecisionRow[]> 
     }
   }
 
-  return rows.reverse();
+  const demoRecordTx = process.env.NEXT_PUBLIC_DEMO_DECISION_ID;
+  if (demoRecordTx) {
+    const demo = await decisionForTransaction(demoRecordTx);
+    if (
+      demo &&
+      (!fromBlock || demo.blockNumber >= fromBlock) &&
+      !rows.some((row) => row.txHash.toLowerCase() === demo.txHash.toLowerCase())
+    ) {
+      rows.push(demo);
+    }
+  }
+
+  return rows.sort((a, b) => (a.blockNumber > b.blockNumber ? -1 : a.blockNumber < b.blockNumber ? 1 : 0));
 }
 
 /**
  * One decision, by its transaction hash.
  */
 export async function findDecision(txHash: string): Promise<DecisionRow | undefined> {
-  const rows = await listDecisions();
   const target = txHash.toLowerCase();
+  const demoOrderTx = process.env.NEXT_PUBLIC_DEMO_ORDER_TX;
+  const demoRecordTx = process.env.NEXT_PUBLIC_DEMO_DECISION_ID;
+
+  if (demoOrderTx?.toLowerCase() === target && demoRecordTx) {
+    const demo = await decisionForTransaction(demoRecordTx);
+    return demo?.txRef.toLowerCase() === target ? demo : undefined;
+  }
+
+  const direct = await decisionForTransaction(txHash);
+  if (direct) return direct;
+
+  const rows = await listDecisions();
   return rows.find((row) => row.txHash.toLowerCase() === target || row.txRef.toLowerCase() === target);
 }
 
